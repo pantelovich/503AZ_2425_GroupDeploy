@@ -1,0 +1,17 @@
+# macOS
+.DS_Store
+
+# Local secrets
+.env
+*.pem
+*.key
+*.tfstate
+*.tfstate.*
+
+# Large local course media
+*.mp4
+*.mov
+
+# Temporary files
+tmp/
+*.log
