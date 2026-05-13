@@ -10,6 +10,8 @@ The main risk chain is:
 internet -> public webserver -> public MongoDB -> sensitive data
 ```
 
+The full Excel matrix has 104 risk entries. In the presentation, we only explain the main pattern and the highest risks.
+
 ## What To Say First
 
 We used the ATV method, which means:
@@ -124,4 +126,3 @@ The next step is risk treatment:
 3. Record owner.
 4. Add evidence.
 5. Score residual risk.
-

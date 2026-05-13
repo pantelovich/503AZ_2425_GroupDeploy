@@ -119,7 +119,26 @@ The current evidence is from the repository files:
 
 AWS console screenshots still need to be collected after deployment.
 
-## Draft ATV Matrix
+## Full ATV Matrix
+
+The full working matrix is in:
+
+```text
+docs/week4_atv_risk_matrix.xlsx
+```
+
+It has 104 risk entries across:
+
+1. Public webserver and application.
+2. MongoDB database.
+3. VPC and network.
+4. Deployment and configuration.
+5. Monitoring and logging.
+6. Optional VDI.
+
+The table below is only the short version for explaining the main risks in the report or presentation.
+
+## ATV Matrix Summary
 
 | Asset ID | Asset | Consequence | Threat ID | Threat | Vulnerability ID | Vulnerability | Likelihood | Overall | Action | Owner |
 |---|---|---:|---|---|---|---|---:|---:|---|---|
@@ -215,7 +234,7 @@ Shared evidence needed:
 
 ## Current Position
 
-This is a starting draft. The scores are based on the template and need to be checked against the deployed AWS environment.
+This is a developed starting matrix. It now has enough detail for Week 4, but the scores are still based mainly on the template and need to be checked against the deployed AWS environment.
 
 The Week 4 submission should not claim that controls are finished. It should clearly show the starting risk picture and what evidence was used.
 
@@ -235,4 +254,3 @@ Short speaking version:
 ```text
 We looked at the deployment before controls were applied. The main issue is that both the webserver and MongoDB are exposed in a public design. The webserver is open on port 80 and the database is open on port 27017. The application also shows personnel data, so the consequence is high. Our ATV matrix shows the highest risks around MongoDB exposure, public application data, and weak network separation. Pantelis is covering the webserver risks, Mike is covering the database risks, and we will handle the network and final treatment plan together.
 ```
-
