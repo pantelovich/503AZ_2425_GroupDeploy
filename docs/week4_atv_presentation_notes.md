@@ -10,7 +10,7 @@ The main risk chain is:
 internet -> public webserver -> public MongoDB -> sensitive data
 ```
 
-The full Excel matrix has 104 risk entries. In the presentation, we only explain the main pattern and the highest risks.
+The full Excel matrix has 24 evidence-backed risk entries. In the presentation, we only explain the main pattern and the highest risks.
 
 ## What To Say First
 

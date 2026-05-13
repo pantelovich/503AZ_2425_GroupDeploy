@@ -127,7 +127,7 @@ The full working matrix is in:
 docs/week4_atv_risk_matrix.xlsx
 ```
 
-It has 104 risk entries across:
+It has 24 evidence-backed risk entries across:
 
 1. Public webserver and application.
 2. MongoDB database.
@@ -137,6 +137,14 @@ It has 104 risk entries across:
 6. Optional VDI.
 
 The table below is only the short version for explaining the main risks in the report or presentation.
+
+The workbook columns follow the course requirement more closely than the simple draft:
+
+```text
+Risk ID | Asset ID | Asset | Risk Source | Threat | Vulnerability | Event / Incident | Consequence | Risk Owner | Likelihood | Impact | Overall Score | Priority | ISO 27001 / 27017 Control | Status | Action / Initial Treatment | Evidence / Source
+```
+
+This is the before-controls assessment. The after-controls version should update control status and residual risk.
 
 ## ATV Matrix Summary
 
@@ -234,7 +242,7 @@ Shared evidence needed:
 
 ## Current Position
 
-This is a developed starting matrix. It now has enough detail for Week 4, but the scores are still based mainly on the template and need to be checked against the deployed AWS environment.
+This is a developed starting matrix. It has enough detail for Week 4 without padding the same issue repeatedly, but the scores are still based mainly on the template and need to be checked against the deployed AWS environment.
 
 The Week 4 submission should not claim that controls are finished. It should clearly show the starting risk picture and what evidence was used.
 
