@@ -24,7 +24,7 @@ Our Week 4 work is the first risk picture. We are not claiming the system is fix
 
 ## Scope
 
-This draft covers the first risk analysis for the CivicNexus AWS deployment. It is based on the CloudFormation template and the database load script in this repository.
+This draft covers the first risk analysis for the CivicNexus AWS deployment. We use the CloudFormation YAML to deploy the baseline, then use the template, AWS screenshots, and the database load script as evidence for the risk assessment.
 
 The analysis uses the ATV method:
 
@@ -33,6 +33,22 @@ The analysis uses the ATV method:
 3. Vulnerability.
 
 The aim is to identify the main risks before the controls are applied. The treatment work comes after this, using the risk scores and evidence from this document.
+
+## Context
+
+The system is a cloud-hosted dashboard with a public webserver, a MongoDB database, and sample personnel and operational data. This means the assessment is not only about whether the AWS resources deploy successfully. It is about whether the design exposes data or services that should be controlled.
+
+The main "crown jewels" for this assessment are:
+
+1. Personnel data in MongoDB.
+2. Operational dashboard data.
+3. MongoDB itself.
+4. The public web dashboard.
+5. Security groups, subnets, and route tables that control access.
+
+Because the system includes personal data, the risk appetite is low for public database access, personal data exposure, weak authentication, and missing recovery evidence. Medium technical risks can be accepted only if there is a clear reason and the evidence is recorded.
+
+The legal context is also relevant. UK GDPR and the Data Protection Act 2018 apply where personal data is processed. The Data (Use and Access) Act 2025 updates parts of the UK data protection framework, but it does not remove the need to protect personal data. For this Week 4 task, this supports treating personnel data exposure as high consequence.
 
 ## Simple System View
 
@@ -104,7 +120,7 @@ Current high risk areas:
 
 ## Main Evidence Used So Far
 
-The current evidence is from the repository files:
+The current evidence is from the repository files and one live AWS deployment check:
 
 1. `cfstack.yml` lines 49 to 68 show public subnets with public IP assignment.
 2. `cfstack.yml` lines 109 to 115 show the public route to the internet gateway.
@@ -116,8 +132,23 @@ The current evidence is from the repository files:
 8. `cfstack.yml` lines 326 to 337 show personnel data displayed by the web application.
 9. `cfstack.yml` lines 391 to 401 show public RDP if the optional VDI is used.
 10. `DBLoad.js` lines 38 to 54 show employee names, contact details, and clearance level data.
+11. Live stack output showed the webserver public IP `54.198.175.207` and MongoDB public IP `18.207.229.107`.
+12. Live AWS check showed the webserver instance running and reachable.
+13. Live web check returned `HTTP/1.1 200 OK` from the public dashboard.
+14. A dashboard screenshot was saved as `web_dashboard_live_2026-05-15.png`.
 
-AWS console screenshots still need to be collected after deployment.
+AWS console screenshots are still useful for the final report because they are easier to present than command output.
+
+## How This Matches Week 4
+
+The Week 4 task is a starting ATV risk assessment. The workbook keeps the full working matrix, but the presentation should focus on the main risks instead of reading every row.
+
+The matrix matches the task because it records:
+
+1. Assets, including the webserver, MongoDB, data, VPC, deployment files, and optional VDI.
+2. Threats, such as unauthorised access, data disclosure, information leakage, service failure, and weak monitoring.
+3. Vulnerabilities, such as public MongoDB access, public web access, weak tier separation, missing backup evidence, and error display.
+4. Consequence, likelihood, overall score, owner, action, and evidence.
 
 ## Full ATV Matrix
 
@@ -127,7 +158,7 @@ The full working matrix is in:
 docs/week4_atv_risk_matrix.xlsx
 ```
 
-It has 24 evidence-backed risk entries across:
+It has 49 evidence-backed risk entries across:
 
 1. Public webserver and application.
 2. MongoDB database.
@@ -138,32 +169,30 @@ It has 24 evidence-backed risk entries across:
 
 The table below is only the short version for explaining the main risks in the report or presentation.
 
-The workbook columns follow the course requirement more closely than the simple draft:
+The workbook starts with the same style as the tutor/example spreadsheet, then adds owner, evidence and control columns:
 
 ```text
-Risk ID | Asset ID | Asset | Risk Source | Threat | Vulnerability | Event / Incident | Consequence | Risk Owner | Likelihood | Impact | Overall Score | Priority | ISO 27001 / 27017 Control | Status | Action / Initial Treatment | Evidence / Source
+Asset ID | Asset | Consequence Score | Threat ID | Threat | Vulnerability ID | Vulnerability | Likelihood Score | Overall Score | Action | Risk Source | Event / Incident | Risk Owner | ISO 27001 / ISO 27017 Control | Status | Evidence / Notes | Likelihood Justification
 ```
 
 This is the before-controls assessment. The after-controls version should update control status and residual risk.
 
-## ATV Matrix Summary
+## Top Risk Summary
 
-| Asset ID | Asset | Consequence | Threat ID | Threat | Vulnerability ID | Vulnerability | Likelihood | Overall | Action | Owner |
-|---|---|---:|---|---|---|---|---:|---:|---|---|
-| A1 | Public webserver and application | 5 | A1T1 | Unauthorised access to public application data | A1T1V1 | The dashboard is public over HTTP and displays operational data | 4 | 20 | Treat | Pantelis |
-| A1 | Public webserver and application | 5 | A1T2 | Disclosure of personnel information | A1T2V1 | Personnel data is displayed in the web application | 4 | 20 | Treat | Pantelis |
-| A1 | Public webserver and application | 4 | A1T3 | Webserver information leakage | A1T3V1 | PHP errors are displayed to users | 4 | 16 | Treat | Pantelis |
-| A1 | Public webserver and application | 4 | A1T4 | Application layer denial of service | A1T4V1 | Public HTTP service has no visible WAF, rate limit, or CloudFront layer | 3 | 12 | Treat | Pantelis |
-| A2 | MongoDB database | 5 | A2T1 | Unauthorised database access | A2T1V1 | MongoDB port 27017 is open to `0.0.0.0/0` | 5 | 25 | Treat | Mike |
-| A2 | MongoDB database | 5 | A2T2 | Direct database connection from the internet | A2T2V1 | MongoDB is placed in a public subnet and uses a public IP | 5 | 25 | Treat | Mike |
-| A2 | MongoDB database | 5 | A2T3 | Data breach of employee and operational data | A2T3V1 | Database contains personnel and operational data | 4 | 20 | Treat | Mike |
-| A2 | MongoDB database | 4 | A2T4 | Data loss or weak recovery | A2T4V1 | No backup or recovery process is shown in the template | 3 | 12 | Treat | Mike |
-| A3 | VPC and network | 5 | A3T1 | Internet exposure of internal services | A3T1V1 | Public subnets assign public IPs and route to the internet gateway | 4 | 20 | Treat | Shared |
-| A3 | VPC and network | 4 | A3T2 | Weak network separation | A3T2V1 | Web and database resources are both in the public subnet area | 4 | 16 | Treat | Shared |
-| A3 | VPC and network | 4 | A3T3 | Over permissive inbound access | A3T3V1 | Security groups allow public access to important services | 4 | 16 | Treat | Shared |
-| A4 | Deployment and configuration | 4 | A4T1 | Insecure default deployment | A4T1V1 | Template deploys intentionally insecure resources unless changed | 4 | 16 | Treat | Shared |
-| A4 | Deployment and configuration | 4 | A4T2 | Configuration drift after deployment | A4T2V1 | No monitoring or change review process is shown in the repo | 3 | 12 | Treat | Shared |
-| A5 | Optional VDI | 4 | A5T1 | Remote desktop compromise | A5T1V1 | Optional RDP access allows port 3389 from `0.0.0.0/0` | 4 | 16 | Treat if used | Shared |
+This table is the short presentation version. The full 49-row matrix stays as supporting evidence.
+
+| Rank | Asset | Threat | Main Vulnerability | Score | Owner | Evidence Status |
+|---:|---|---|---|---:|---|---|
+| 1 | MongoDB | Unauthorised database access | Port `27017` open to `0.0.0.0/0` and MongoDB binds to all interfaces | 25 | Mike | Template evidence found, AWS screenshot needed |
+| 2 | MongoDB | Public database exposure | MongoDB is in `PublicSubnet1` and the stack outputs the database public IP | 25 | Mike / Shared | Template evidence found, AWS screenshot needed |
+| 3 | MongoDB | Weak authentication | No MongoDB user or `security.authorization` setting is shown | 20 | Mike | Template evidence found, live test needed |
+| 4 | Web dashboard | Unauthorised dashboard viewing | The webserver is public and the dashboard displays operational/personnel data | 20 | Pantelis | Template and live dashboard evidence found |
+| 5 | Data | Personnel data disclosure | Seed data includes names, contacts, roles and clearance levels | 20 | Pantelis / Mike | Template, seed and live page evidence found |
+| 6 | Network | Weak tier separation | Webserver and MongoDB are both placed in the public tier | 20 | Shared | Template and stack output evidence found |
+| 7 | Web app | Information leakage | PHP errors and database exceptions are shown to users | 16 | Pantelis | Template evidence found |
+| 8 | MongoDB | Weak recovery after data loss | No backup, snapshot or restore process is shown | 15 | Mike | Missing evidence, AWS check needed |
+| 9 | Monitoring | Late detection | No clear VPC Flow Logs, CloudWatch alarms or database log collection shown | 12 | Shared | Missing evidence, AWS check needed |
+| 10 | Optional VDI | Remote desktop exposure | RDP allows `3389` from `0.0.0.0/0` if deployed | 16 | Shared | Only applies if VDI is used |
 
 ## Top Risks Explained Simply
 
@@ -186,6 +215,8 @@ Evidence:
 1. `cfstack.yml` lines 205 to 215.
 2. `cfstack.yml` lines 326 to 337.
 3. `DBLoad.js` lines 38 to 54.
+4. Live dashboard screenshot `web_dashboard_live_2026-05-15.png`.
+5. Live HTTP headers in `2026-05-15_dashboard_http_headers.txt`.
 
 ### 3. Weak Network Separation
 
@@ -208,11 +239,19 @@ Evidence:
 
 ## Notes For Pantelis
 
-Webserver evidence needed:
+Webserver evidence collected:
 
-1. Screenshot of the webserver security group inbound rules.
-2. Screenshot showing the web application is reachable from the public internet.
-3. Screenshot or page capture showing what data the dashboard displays.
+1. Security group command output showing port `80` open to `0.0.0.0/0`.
+2. Stack output showing the webserver public IP.
+3. Live dashboard HTTP headers.
+4. Live dashboard HTML capture.
+5. Live dashboard screenshot.
+
+Webserver evidence still useful:
+
+1. AWS console screenshot showing the webserver security group inbound rules.
+2. AWS console screenshot showing subnet and public IP.
+3. Expanded dashboard screenshots for personnel data and operational logs.
 4. Evidence of whether HTTP only is used or HTTPS is enabled.
 5. Evidence of webserver logging, WAF, CloudFront, or lack of those controls.
 
@@ -242,9 +281,16 @@ Shared evidence needed:
 
 ## Current Position
 
-This is a developed starting matrix. It has enough detail for Week 4 without padding the same issue repeatedly, but the scores are still based mainly on the template and need to be checked against the deployed AWS environment.
+This is a developed starting matrix. It is a realistic prototype for Week 4 without padding the same issue repeatedly, but the scores still need to be checked against the deployed AWS environment and screenshots.
 
 The Week 4 submission should not claim that controls are finished. It should clearly show the starting risk picture and what evidence was used.
+
+## Sources To Keep With The Notes
+
+1. GOV.UK, Data Protection Act 2018 collection: https://www.gov.uk/government/collections/data-protection-act-2018
+2. GOV.UK, Data (Use and Access) Act 2025 collection: https://www.gov.uk/government/collections/data-use-and-access-act-2025
+3. GOV.UK, Data (Use and Access) Act 2025: data protection and privacy changes: https://www.gov.uk/guidance/data-use-and-access-act-2025-data-protection-and-privacy-changes
+4. `cfstack.yml` and `DBLoad.js` in the project repository.
 
 ## How To Present This
 
