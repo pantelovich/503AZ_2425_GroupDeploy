@@ -18,6 +18,9 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: us-east-1
 
+      - name: Validate CloudFormation template
+        run: aws cloudformation validate-template --template-body file://cfstack.yml
+
       - name: Deploy Main CivicNexus Stack
         run: |
           aws cloudformation deploy \
@@ -53,4 +56,10 @@ jobs:
           sleep 60 
           mongosh "mongodb://${{ env.DB_SERVER_IP }}:27017" < DBLoad.js
 
+      - name: Show stack outputs
+        run: |
+          aws cloudformation describe-stacks \
+            --stack-name ${{ secrets.GROUP_NAME }}-civicnexus-stack \
+            --query "Stacks[0].Outputs" \
+            --output table
 
