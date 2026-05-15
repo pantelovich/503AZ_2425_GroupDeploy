@@ -1,0 +1,453 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation stack for the 503AZ CivicNexus project with first webserver security changes.'
+
+Parameters:
+  GroupName:
+    Type: String
+    Description: The unique group name or number to tag resources (e.g., Group-01).
+  GroupSize:
+    Type: Number
+    Description: The number of students in the group.
+    Default: 2
+    AllowedValues: [2, 3]
+  KeyName:
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instances.
+
+Conditions:
+  CreateVDI: !Equals [!Ref GroupSize, 3]
+
+Resources:
+  # ------------------------------------------------------------#
+  # Networking
+  # ------------------------------------------------------------#
+  VPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-vpc-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  InternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  AttachGateway:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet1:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-public-subnet-1-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  PublicSubnet2:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-public-subnet-2-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  PrivateSubnet1:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.10.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-private-subnet-1-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  PrivateSubnet2:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.11.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-private-subnet-2-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+  
+  PublicRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-public-rt-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  DefaultPublicRoute:
+    Type: 'AWS::EC2::Route'
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  
+  PublicSubnet1RouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnet2RouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+      
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-private-rt-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet1
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet2
+
+  # ------------------------------------------------------------#
+  # Asset 2: MongoDB EC2 Instance (Student 2)
+  # ------------------------------------------------------------#
+  MongoSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: 'Insecure - Allows all traffic to MongoDB'
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 27017
+          ToPort: 27017
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-mongodb-sg-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  MongoEC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: t3.small
+      SubnetId: !Ref PublicSubnet1
+      KeyName: !Ref KeyName
+      SecurityGroupIds:
+        - !Ref MongoSecurityGroup
+      ImageId: ami-00ca32bbc84273381 # Amazon Linux 2023
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          # Install MongoDB for smart city operational data
+          echo "[mongodb-org-7.0]" >> /etc/yum.repos.d/mongodb-org-7.0.repo
+          echo "name=MongoDB Repository" >> /etc/yum.repos.d/mongodb-org-7.0.repo
+          echo "baseurl=https://repo.mongodb.org/yum/amazon/2023/mongodb-org/7.0/x86_64/" >> /etc/yum.repos.d/mongodb-org-7.0.repo
+          echo "gpgcheck=1" >> /etc/yum.repos.d/mongodb-org-7.0.repo
+          echo "enabled=1" >> /etc/yum.repos.d/mongodb-org-7.0.repo
+          echo "gpgkey=https://www.mongodb.org/static/pgp/server-7.0.asc" >> /etc/yum.repos.d/mongodb-org-7.0.repo
+          dnf install -y mongodb-org
+          # Start and enable MongoDB
+          systemctl start mongod
+          systemctl enable mongod
+          # Insecurely configure MongoDB to listen on all interfaces
+          sed -i 's/bindIp: 127.0.0.1/bindIp: 0.0.0.0/g' /etc/mongod.conf
+          systemctl restart mongod
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-mongodb-instance-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+          
+  # ------------------------------------------------------------#
+  # Asset 1: Public Web Server (Student 1)
+  # ------------------------------------------------------------#
+  WebServerSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: 'Allows HTTP traffic to the web dashboard'
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-web-server-sg-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+          
+  WebServerInstance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: t2.micro
+      SubnetId: !Ref PublicSubnet1
+      KeyName: !Ref KeyName
+      SecurityGroupIds:
+        - !Ref WebServerSecurityGroup
+      ImageId: ami-00ca32bbc84273381 # Amazon Linux 2023
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -xe
+        
+          # Update packages
+          dnf update -y
+        
+          # Add MongoDB repository
+          cat <<EOF > /etc/yum.repos.d/mongodb-org-7.0.repo
+          [mongodb-org-7.0]
+          name=MongoDB Repository
+          baseurl=https://repo.mongodb.org/yum/amazon/2023/mongodb-org/7.0/x86_64/
+          gpgcheck=1
+          enabled=1
+          gpgkey=https://www.mongodb.org/static/pgp/server-7.0.asc
+          EOF
+        
+          # Install the web server and PHP packages
+          dnf install -y httpd php php-fpm php-pear php-devel gcc make \
+                         php-cli php-json php-openssl unzip
+        
+          # Composer needs HOME set during install
+          export HOME=/root
+          
+          # Install Composer globally
+          curl -sS https://getcomposer.org/installer | php
+          mv composer.phar /usr/local/bin/composer
+          chmod +x /usr/local/bin/composer
+          composer --version
+        
+          # Install MongoDB PHP Driver via PECL
+          pecl channel-update pecl.php.net
+          printf "\n" | pecl install mongodb
+          echo "extension=mongodb.so" > /etc/php.d/50-mongodb.ini
+        
+          # Log errors instead of showing them on the page
+          sed -i 's/^display_errors = .*/display_errors = Off/' /etc/php.ini
+          sed -i 's/^log_errors = .*/log_errors = On/' /etc/php.ini
+        
+          # Allow Apache network access
+          setsebool -P httpd_can_network_connect 1
+        
+          # Write dashboard app
+          cat <<'EOF' > /var/www/html/index.php
+          <?php
+          ini_set('display_errors', 0);
+          ini_set('display_startup_errors', 0);
+          ini_set('log_errors', 1);
+          error_reporting(E_ALL);
+
+          $mongoIp = "${MongoEC2Instance.PrivateIp}";
+          $uri = "mongodb://$mongoIp:27017";
+        
+          try {
+              require '/var/www/html/vendor/autoload.php';
+              $client = new MongoDB\Client($uri);
+              $db = $client->civicnexus;
+          ?>
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <title>CivicNexus Smart City Dashboard</title>
+              <style>
+                  body { font-family: Arial, sans-serif; margin: 2em; background-color: #f4f4f4; color: #333; }
+                h1 { color: #005ea8; }
+                  details { margin-bottom: 1.5em; }
+                summary { font-size: 1.2em; font-weight: bold; color: #005ea8; cursor: pointer; }
+                  table { border-collapse: collapse; width: 100%; margin-top: 1em; box-shadow: 0 2px 3px rgba(0,0,0,0.1); }
+                  th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+                th { background-color: #005ea8; color: white; }
+                  tr:nth-child(even) { background-color: #f9f9f9; }
+                  .error { color: red; font-weight: bold; }
+                  pre { margin: 0; font-size: 0.9em; }
+              </style>
+          </head>
+          <body>
+              <h1>CivicNexus Live City Operations Data</h1>
+        
+              <!-- Urban and Environmental Data -->
+              <details open>
+              <summary>Urban & Environmental Data</summary>
+                <table>
+                <tr><th>Record ID</th><th>Data Type</th><th>Location</th><th>Reading</th><th>Timestamp</th></tr>
+                <?php foreach ($db->urban_environment_data->find() as $doc): ?>
+                        <tr>
+                    <td><?= htmlspecialchars($doc['record_id'] ?? 'N/A') ?></td>
+                    <td><?= htmlspecialchars($doc['data_type'] ?? 'N/A') ?></td>
+                    <td><?= htmlspecialchars($doc['location'] ?? 'N/A') ?></td>
+                    <td><?= htmlspecialchars($doc['reading_value'] ?? 'N/A') ?> <?= htmlspecialchars($doc['unit'] ?? '') ?></td>
+                    <td><?= $doc['timestamp'] ? htmlspecialchars($doc['timestamp']->toDateTime()->format('Y-m-d H:i:s')) : 'N/A' ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </table>
+              </details>
+        
+              <!-- Personnel Data -->
+              <details>
+              <summary>Personnel Data</summary>
+                <table>
+                <tr><th>Employee ID</th><th>Name</th><th>Job Role</th><th>Contact</th><th>Security Clearance</th></tr>
+                <?php foreach ($db->personnel_data->find() as $doc): ?>
+                        <tr>
+                    <td><?= htmlspecialchars($doc['employee_id'] ?? 'N/A') ?></td>
+                            <td><?= htmlspecialchars($doc['name'] ?? 'N/A') ?></td>
+                            <td><?= htmlspecialchars($doc['job_role'] ?? 'N/A') ?></td>
+                            <td><?= htmlspecialchars($doc['contact'] ?? 'N/A') ?></td>
+                    <td><?= htmlspecialchars($doc['security_clearance'] ?? 'N/A') ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </table>
+              </details>
+        
+              <!-- System & Operational Logs -->
+              <details>
+              <summary>System & Operational Logs</summary>
+                <table>
+                <tr><th>Log ID</th><th>Timestamp</th><th>Subsystem</th><th>Event Type</th><th>Details</th></tr>
+                <?php foreach ($db->system_operational_logs->find() as $doc): ?>
+                        <tr>
+                            <td><?= htmlspecialchars($doc['log_id'] ?? 'N/A') ?></td>
+                            <td><?= $doc['timestamp'] ? htmlspecialchars($doc['timestamp']->toDateTime()->format('Y-m-d H:i:s')) : 'N/A' ?></td>
+                    <td><?= htmlspecialchars($doc['subsystem'] ?? 'N/A') ?></td>
+                            <td><?= htmlspecialchars($doc['event_type'] ?? 'N/A') ?></td>
+                            <td><pre><?= htmlspecialchars(json_encode($doc['details'] ?? [], JSON_PRETTY_PRINT)) ?></pre></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </table>
+              </details>
+        
+          </body>
+          </html>
+          <?php
+          } catch (Exception $e) {
+              error_log("Dashboard database error: " . $e->getMessage());
+              echo "<p class='error'>Dashboard data is not available right now. Please check the application logs.</p>";
+          }
+          ?>
+          EOF
+
+          cat <<'EOF' > /var/www/html/health.php
+          <?php
+          ini_set('display_errors', 0);
+          ini_set('log_errors', 1);
+          header('Content-Type: application/json');
+          echo json_encode([
+              'service' => 'civicnexus-dashboard',
+              'status' => 'ok'
+          ]);
+          ?>
+          EOF
+        
+          # Run Composer as ec2-user, then restore ownership
+          chown -R ec2-user:ec2-user /var/www/html
+          cd /var/www/html
+          sudo -u ec2-user composer require mongodb/mongodb
+          chown -R apache:apache /var/www/html
+          chmod -R 755 /var/www/html
+        
+          # Enable and start services
+          systemctl enable php-fpm
+          systemctl start php-fpm
+          systemctl enable httpd
+          systemctl start httpd
+          systemctl restart httpd
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-web-server-instance-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  # ------------------------------------------------------------#
+  # Asset 3: VDI Instance (Student 3 - Conditional)
+  # ------------------------------------------------------------#
+  VDISecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Condition: CreateVDI
+    Properties:
+      GroupDescription: 'Insecure - Allows public RDP traffic'
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3389
+          ToPort: 3389
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-vdi-sg-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  VDIInstance:
+    Type: 'AWS::EC2::Instance'
+    Condition: CreateVDI
+    Properties:
+      InstanceType: t3.medium
+      ImageId: ami-0efee5160a1079475 # Windows Server 2025 Base
+      KeyName: !Ref KeyName
+      SubnetId: !Ref PublicSubnet1 # Insecurely placed in a public subnet for easy access
+      SecurityGroupIds:
+        - !Ref VDISecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-vdi-instance-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+          
+Outputs:
+  WebServerPublicIP:
+    Description: 'Public IP address of the Web Server'
+    Value: !GetAtt WebServerInstance.PublicIp
+  WebServerHealthURL:
+    Description: 'Simple health endpoint for the web dashboard'
+    Value: !Sub 'http://${WebServerInstance.PublicIp}/health.php'
+  MongoServerPrivateIP:
+    Description: 'Private IP used by the web application to reach MongoDB'
+    Value: !GetAtt MongoEC2Instance.PrivateIp
+  MongoServerPublicIP:
+    Description: 'The Public IP of the MongoDB EC2 Instance. Use this to connect from other instances in the VPC.'
+    Value: !GetAtt MongoEC2Instance.PublicIp
+  VDIInstanceId:
+    Description: 'Instance ID of the VDI instance (if created)'
+    Condition: CreateVDI
+    Value: !Ref VDIInstance
