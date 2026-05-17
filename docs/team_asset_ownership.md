@@ -70,3 +70,4 @@ Only claim a control is implemented when there is matching evidence such as:
 | 2026-05-17 | Pantelis | Added team asset ownership and clean working boundaries. |
 | 2026-05-17 | Pantelis | Added web-side hardening in `cfstack-secure.yml`: IMDSv2 requirement, Apache security headers, and reduced public dashboard display of personnel/log details. |
 | 2026-05-17 | Pantelis | Updated `scripts/collect_webserver_evidence.sh` to collect health check output, IMDSv2 metadata options, security header checks, and dashboard redaction checks. |
+| 2026-05-17 | Pantelis | Reduced webserver post-install exposure by disabling directory indexes and removing Composer/build tools after dashboard dependencies are installed. |

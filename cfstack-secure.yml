@@ -282,6 +282,9 @@ Resources:
           Header always set X-Frame-Options "DENY"
           Header always set Referrer-Policy "no-referrer"
           Header always set Cache-Control "no-store"
+          <Directory "/var/www/html">
+              Options -Indexes
+          </Directory>
           EOF
         
           # Write dashboard app
@@ -393,6 +396,10 @@ Resources:
           chown -R ec2-user:ec2-user /var/www/html
           cd /var/www/html
           sudo -u ec2-user composer require mongodb/mongodb
+          rm -f /usr/local/bin/composer
+          rm -rf /root/.cache/composer /tmp/pear
+          dnf remove -y gcc make php-devel php-pear || true
+          dnf clean all
           chown -R apache:apache /var/www/html
           chmod -R 755 /var/www/html
         
