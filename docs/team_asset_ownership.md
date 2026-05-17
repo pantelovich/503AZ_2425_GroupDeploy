@@ -37,6 +37,7 @@ Pantelis is currently covering:
 2. PHP error display and logging.
 3. Webserver package/tooling exposure.
 4. Dashboard health check and web evidence.
+5. Public dashboard data minimisation.
 
 Mike is currently covering:
 
@@ -67,3 +68,4 @@ Only claim a control is implemented when there is matching evidence such as:
 | Date | Person | Update |
 |---|---|---|
 | 2026-05-17 | Pantelis | Added team asset ownership and clean working boundaries. |
+| 2026-05-17 | Pantelis | Added web-side hardening in `cfstack-secure.yml`: IMDSv2 requirement, Apache security headers, and reduced public dashboard display of personnel/log details. |

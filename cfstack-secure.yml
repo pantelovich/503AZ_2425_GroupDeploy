@@ -224,6 +224,9 @@ Resources:
       InstanceType: t2.micro
       SubnetId: !Ref PublicSubnet1
       KeyName: !Ref KeyName
+      MetadataOptions:
+        HttpTokens: required
+        HttpEndpoint: enabled
       SecurityGroupIds:
         - !Ref WebServerSecurityGroup
       ImageId: ami-00ca32bbc84273381 # Amazon Linux 2023
@@ -269,6 +272,17 @@ Resources:
         
           # Allow Apache network access
           setsebool -P httpd_can_network_connect 1
+
+          # Reduce HTTP information leakage from Apache responses
+          cat <<'EOF' > /etc/httpd/conf.d/security-headers.conf
+          ServerTokens Prod
+          ServerSignature Off
+          TraceEnable Off
+          Header always set X-Content-Type-Options "nosniff"
+          Header always set X-Frame-Options "DENY"
+          Header always set Referrer-Policy "no-referrer"
+          Header always set Cache-Control "no-store"
+          EOF
         
           # Write dashboard app
           cat <<'EOF' > /var/www/html/index.php
@@ -323,20 +337,16 @@ Resources:
                 </table>
               </details>
         
-              <!-- Personnel Data -->
+              <!-- Personnel Data Summary -->
               <details>
-              <summary>Personnel Data</summary>
+              <summary>Personnel Data Summary</summary>
                 <table>
-                <tr><th>Employee ID</th><th>Name</th><th>Job Role</th><th>Contact</th><th>Security Clearance</th></tr>
-                <?php foreach ($db->personnel_data->find() as $doc): ?>
-                        <tr>
-                    <td><?= htmlspecialchars($doc['employee_id'] ?? 'N/A') ?></td>
-                            <td><?= htmlspecialchars($doc['name'] ?? 'N/A') ?></td>
-                            <td><?= htmlspecialchars($doc['job_role'] ?? 'N/A') ?></td>
-                            <td><?= htmlspecialchars($doc['contact'] ?? 'N/A') ?></td>
-                    <td><?= htmlspecialchars($doc['security_clearance'] ?? 'N/A') ?></td>
-                        </tr>
-                    <?php endforeach; ?>
+                <tr><th>Collection</th><th>Record Count</th><th>Display Status</th></tr>
+                <tr>
+                  <td>personnel_data</td>
+                  <td><?= htmlspecialchars((string) $db->personnel_data->countDocuments()) ?></td>
+                  <td>Restricted from public dashboard view</td>
+                </tr>
                 </table>
               </details>
         
@@ -351,7 +361,7 @@ Resources:
                             <td><?= $doc['timestamp'] ? htmlspecialchars($doc['timestamp']->toDateTime()->format('Y-m-d H:i:s')) : 'N/A' ?></td>
                     <td><?= htmlspecialchars($doc['subsystem'] ?? 'N/A') ?></td>
                             <td><?= htmlspecialchars($doc['event_type'] ?? 'N/A') ?></td>
-                            <td><pre><?= htmlspecialchars(json_encode($doc['details'] ?? [], JSON_PRETTY_PRINT)) ?></pre></td>
+                            <td>Restricted from public dashboard view</td>
                         </tr>
                     <?php endforeach; ?>
                 </table>
