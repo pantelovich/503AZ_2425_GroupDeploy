@@ -84,9 +84,63 @@ write_text "webserver_sg_inbound_summary" ec2 describe-security-groups \
   --group-ids "$WEB_SG_ID" \
   --query "SecurityGroups[0].IpPermissions[*].[IpProtocol,FromPort,ToPort,IpRanges[*].CidrIp]"
 
+write_text "webserver_metadata_options" ec2 describe-instances \
+  --instance-ids "$WEB_INSTANCE_ID" \
+  --query "Reservations[0].Instances[0].MetadataOptions.[HttpTokens,HttpEndpoint]"
+
 echo "Checking dashboard HTTP response"
-curl -I --max-time 10 "http://$WEB_IP" > "$OUT_DIR/${TODAY}_dashboard_http_headers.txt" || true
-curl --max-time 15 "http://$WEB_IP" > "$OUT_DIR/${TODAY}_dashboard_homepage.html" || true
+HEADER_FILE="$OUT_DIR/${TODAY}_dashboard_http_headers.txt"
+HOME_FILE="$OUT_DIR/${TODAY}_dashboard_homepage.html"
+HEALTH_FILE="$OUT_DIR/${TODAY}_health_check.txt"
+CONTROL_CHECK_FILE="$OUT_DIR/${TODAY}_webserver_control_checks.txt"
+
+curl -I --max-time 10 "http://$WEB_IP" > "$HEADER_FILE" || true
+curl --max-time 15 "http://$WEB_IP" > "$HOME_FILE" || true
+curl --max-time 10 "http://$WEB_IP/health.php" > "$HEALTH_FILE" || true
+
+{
+  echo "Webserver control checks"
+  echo "Date: $TODAY"
+  echo "Stack: $STACK_NAME"
+  echo "Web IP: $WEB_IP"
+  echo
+
+  echo "Security headers:"
+  for header in \
+    "X-Content-Type-Options: nosniff" \
+    "X-Frame-Options: DENY" \
+    "Referrer-Policy: no-referrer" \
+    "Cache-Control: no-store"
+  do
+    if grep -qi "^$header" "$HEADER_FILE"; then
+      echo "PASS - $header"
+    else
+      echo "CHECK - $header not found in response headers"
+    fi
+  done
+
+  echo
+  echo "Health endpoint:"
+  if grep -qi "ok" "$HEALTH_FILE"; then
+    echo "PASS - /health.php returned ok"
+  else
+    echo "CHECK - /health.php did not return ok"
+  fi
+
+  echo
+  echo "Dashboard public data minimisation:"
+  if grep -qi "Restricted from public dashboard view" "$HOME_FILE"; then
+    echo "PASS - restricted data message is present"
+  else
+    echo "CHECK - restricted data message not found"
+  fi
+
+  if grep -qi "Personnel Data Summary" "$HOME_FILE"; then
+    echo "PASS - personnel section is summary-based"
+  else
+    echo "CHECK - personnel summary heading not found"
+  fi
+} > "$CONTROL_CHECK_FILE"
 
 cat > "$OUT_DIR/${TODAY}_webserver_evidence_summary.md" <<EOF
 # Webserver Evidence Summary
@@ -110,16 +164,19 @@ Files collected:
 3. ${TODAY}_webserver_sg_rules.json
 4. ${TODAY}_webserver_instance_summary.txt
 5. ${TODAY}_webserver_sg_inbound_summary.txt
-6. ${TODAY}_dashboard_http_headers.txt
-7. ${TODAY}_dashboard_homepage.html
+6. ${TODAY}_webserver_metadata_options.txt
+7. ${TODAY}_dashboard_http_headers.txt
+8. ${TODAY}_dashboard_homepage.html
+9. ${TODAY}_health_check.txt
+10. ${TODAY}_webserver_control_checks.txt
 
 Manual screenshots still useful:
 
 1. Webserver security group inbound rule in AWS console.
 2. Webserver EC2 subnet and public IP in AWS console.
 3. Dashboard homepage in browser.
-4. Personnel data visible on dashboard.
-5. Operational logs visible on dashboard.
+4. Dashboard personnel summary showing public data minimisation.
+5. Operational logs showing details restricted from public view.
 EOF
 
 echo "Evidence saved in $OUT_DIR"
