@@ -1,10 +1,36 @@
 name: Deploy CivicNexus CloudFormation Stack
 
 on:
+  push:
+  pull_request:
   workflow_dispatch:
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Validate YAML templates
+        run: |
+          ruby -e 'require "yaml"; YAML.load_file("cfstack.yml"); YAML.load_file("cfstack-secure.yml")'
+
+      - name: Check shell script syntax
+        run: |
+          bash -n scripts/collect_database_evidence.sh
+          bash -n scripts/collect_webserver_evidence.sh
+          bash -n scripts/update_lab_credentials.sh
+
+      - name: Run ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+          shellcheck scripts/*.sh
+
   deploy:
+    if: github.event_name == 'workflow_dispatch'
+    needs: validate
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
@@ -62,4 +88,3 @@ jobs:
             --stack-name ${{ secrets.GROUP_NAME }}-civicnexus-stack \
             --query "Stacks[0].Outputs" \
             --output table
-
