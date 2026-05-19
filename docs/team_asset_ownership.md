@@ -76,3 +76,4 @@ Only claim a control is implemented when there is matching evidence such as:
 | 2026-05-19 | Pantelis | Improved the web health endpoint so it checks MongoDB reachability and reports degraded status if the database cannot be reached. |
 | 2026-05-19 | Mike | Fixed database evidence collection names and added authenticated user output to the MongoDB connection check. |
 | 2026-05-19 | Pantelis | Restricted secure-stack MongoDB access to the webserver security group and moved demo data seeding into MongoDB instance bootstrap so public database loading is no longer needed. |
+| 2026-05-19 | Pantelis | Updated database evidence collection to record whether the public MongoDB endpoint is connected or blocked from outside the VPC. |

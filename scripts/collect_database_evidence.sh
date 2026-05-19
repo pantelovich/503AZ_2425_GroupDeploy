@@ -80,10 +80,22 @@ else
 fi
 
 if command -v mongosh >/dev/null 2>&1; then
-  mongosh "mongodb://${MONGO_IP}:27017" --quiet --eval \
+  PUBLIC_MONGO_URI="mongodb://${MONGO_IP}:27017/?serverSelectionTimeoutMS=5000"
+
+  if mongosh "$PUBLIC_MONGO_URI" --quiet --eval 'db.adminCommand({ping:1})' \
+    > "$OUT_DIR/${TODAY}_mongodb_public_access_check.txt" 2>&1; then
+    echo "CONNECTED - public MongoDB endpoint accepted a connection from this host." \
+      >> "$OUT_DIR/${TODAY}_mongodb_public_access_check.txt"
+  else
+    echo "BLOCKED - public MongoDB endpoint did not accept a connection from this host." \
+      >> "$OUT_DIR/${TODAY}_mongodb_public_access_check.txt"
+  fi
+
+  mongosh "$PUBLIC_MONGO_URI" --quiet --eval \
     'const dbs=db.adminCommand({listDatabases:1}); printjson(dbs.databases.map(d => ({name:d.name,sizeOnDisk:d.sizeOnDisk}))); const auth=db.adminCommand({connectionStatus:1}); printjson({authenticatedUsers:auth.authInfo.authenticatedUsers}); const d=db.getSiblingDB("civicnexus"); printjson({urban:d.urban_environment_data.countDocuments(), personnel:d.personnel_data.countDocuments(), logs:d.system_operational_logs.countDocuments()});' \
     > "$OUT_DIR/${TODAY}_mongodb_connection_check.txt" || true
 else
+  echo "mongosh not installed, public access check skipped." > "$OUT_DIR/${TODAY}_mongodb_public_access_check.txt"
   echo "mongosh not installed, database connection check skipped." > "$OUT_DIR/${TODAY}_mongodb_connection_check.txt"
 fi
 
@@ -110,15 +122,16 @@ Files collected:
 4. ${TODAY}_mongodb_instance_details.json
 5. ${TODAY}_mongodb_sg_rules.json
 6. ${TODAY}_mongodb_sg_inbound_summary.txt
-7. ${TODAY}_mongodb_connection_check.txt
+7. ${TODAY}_mongodb_public_access_check.txt
+8. ${TODAY}_mongodb_connection_check.txt
 
 What this supports:
 
 1. MongoDB has a public IP.
 2. MongoDB security group rules can be checked from AWS evidence.
-3. The database can be queried using the current public endpoint.
-4. The seeded CivicNexus collections contain data.
-5. The connection output shows whether the current session has authenticated users.
+3. The public MongoDB endpoint can be tested from outside the VPC.
+4. For the secure stack, public access should be blocked by the security group.
+5. The connection output shows whether the current session has authenticated users when a connection is allowed.
 EOF
 
 echo "Database evidence saved in $OUT_DIR"
