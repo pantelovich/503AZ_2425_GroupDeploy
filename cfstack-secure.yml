@@ -194,6 +194,14 @@ Resources:
           sed -i 's/bindIp: 127.0.0.1/bindIp: 0.0.0.0/g' /etc/mongod.conf
           systemctl restart mongod
 
+          # Wait for MongoDB before loading local demo data
+          for attempt in {1..30}; do
+            if mongosh mongodb://127.0.0.1:27017 --quiet --eval 'db.adminCommand({ping:1})' >/dev/null 2>&1; then
+              break
+            fi
+            sleep 5
+          done
+
           # Seed demo data locally because MongoDB is not publicly reachable
           cat <<'EOF' > /tmp/seed_civicnexus.js
           db = db.getSiblingDB('civicnexus');
