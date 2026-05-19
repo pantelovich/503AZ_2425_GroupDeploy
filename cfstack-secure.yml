@@ -300,7 +300,10 @@ Resources:
         
           try {
               require '/var/www/html/vendor/autoload.php';
-              $client = new MongoDB\Client($uri);
+              $client = new MongoDB\Client($uri, [], [
+                  'serverSelectionTimeoutMS' => 2000,
+                  'connectTimeoutMS' => 2000
+              ]);
               $db = $client->civicnexus;
           ?>
           <!DOCTYPE html>
@@ -385,10 +388,32 @@ Resources:
           ini_set('display_errors', 0);
           ini_set('log_errors', 1);
           header('Content-Type: application/json');
-          echo json_encode([
-              'service' => 'civicnexus-dashboard',
-              'status' => 'ok'
-          ]);
+
+          $mongoIp = "${MongoEC2Instance.PrivateIp}";
+          $uri = "mongodb://$mongoIp:27017";
+
+          try {
+              require '/var/www/html/vendor/autoload.php';
+              $client = new MongoDB\Client($uri, [], [
+                  'serverSelectionTimeoutMS' => 2000,
+                  'connectTimeoutMS' => 2000
+              ]);
+              $client->selectDatabase('admin')->command(['ping' => 1]);
+
+              echo json_encode([
+                  'service' => 'civicnexus-dashboard',
+                  'status' => 'ok',
+                  'database' => 'reachable'
+              ]);
+          } catch (Exception $e) {
+              error_log("Health check database error: " . $e->getMessage());
+              http_response_code(503);
+              echo json_encode([
+                  'service' => 'civicnexus-dashboard',
+                  'status' => 'degraded',
+                  'database' => 'unreachable'
+              ]);
+          }
           ?>
           EOF
         
