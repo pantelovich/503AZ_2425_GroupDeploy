@@ -74,3 +74,4 @@ Only claim a control is implemented when there is matching evidence such as:
 | 2026-05-17 | Pantelis | Added GitHub Actions validation for CloudFormation YAML and shell scripts before manual deployment runs. |
 | 2026-05-19 | Pantelis | Updated manual GitHub Actions deployment to use `cfstack-secure.yml` by default while keeping `cfstack.yml` available as the baseline option. |
 | 2026-05-19 | Pantelis | Improved the web health endpoint so it checks MongoDB reachability and reports degraded status if the database cannot be reached. |
+| 2026-05-19 | Mike | Fixed database evidence collection names and added authenticated user output to the MongoDB connection check. |

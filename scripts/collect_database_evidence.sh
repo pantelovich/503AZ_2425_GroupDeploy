@@ -81,7 +81,7 @@ fi
 
 if command -v mongosh >/dev/null 2>&1; then
   mongosh "mongodb://${MONGO_IP}:27017" --quiet --eval \
-    'const dbs=db.adminCommand({listDatabases:1}); printjson(dbs.databases.map(d => ({name:d.name,sizeOnDisk:d.sizeOnDisk}))); const d=db.getSiblingDB("civicnexus"); printjson({urban:d.urban_environmental_data.countDocuments(), personnel:d.personnel_data.countDocuments(), logs:d.system_logs.countDocuments()});' \
+    'const dbs=db.adminCommand({listDatabases:1}); printjson(dbs.databases.map(d => ({name:d.name,sizeOnDisk:d.sizeOnDisk}))); const auth=db.adminCommand({connectionStatus:1}); printjson({authenticatedUsers:auth.authInfo.authenticatedUsers}); const d=db.getSiblingDB("civicnexus"); printjson({urban:d.urban_environment_data.countDocuments(), personnel:d.personnel_data.countDocuments(), logs:d.system_operational_logs.countDocuments()});' \
     > "$OUT_DIR/${TODAY}_mongodb_connection_check.txt" || true
 else
   echo "mongosh not installed, database connection check skipped." > "$OUT_DIR/${TODAY}_mongodb_connection_check.txt"
@@ -118,6 +118,7 @@ What this supports:
 2. MongoDB security group rules can be checked from AWS evidence.
 3. The database can be queried using the current public endpoint.
 4. The seeded CivicNexus collections contain data.
+5. The connection output shows whether the current session has authenticated users.
 EOF
 
 echo "Database evidence saved in $OUT_DIR"
