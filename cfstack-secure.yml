@@ -13,6 +13,28 @@ Parameters:
   KeyName:
     Type: 'AWS::EC2::KeyPair::KeyName'
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instances.
+  MongoAdminUsername:
+    Type: String
+    Description: Admin username created inside MongoDB.
+    Default: mongoAdmin
+    AllowedPattern: '^[A-Za-z][A-Za-z0-9_]{2,31}$'
+  MongoAdminPassword:
+    Type: String
+    Description: Admin password for MongoDB. Use letters, numbers, and underscores to avoid URI escaping issues.
+    NoEcho: true
+    MinLength: 12
+    AllowedPattern: '^[A-Za-z0-9_]{12,64}$'
+  MongoAppUsername:
+    Type: String
+    Description: Application username used by the PHP dashboard.
+    Default: civicApp
+    AllowedPattern: '^[A-Za-z][A-Za-z0-9_]{2,31}$'
+  MongoAppPassword:
+    Type: String
+    Description: Application password for the PHP dashboard MongoDB user. Use letters, numbers, and underscores to avoid URI escaping issues.
+    NoEcho: true
+    MinLength: 12
+    AllowedPattern: '^[A-Za-z0-9_]{12,64}$'
 
 Conditions:
   CreateVDI: !Equals [!Ref GroupSize, 3]
@@ -329,6 +351,42 @@ Resources:
           EOF
           mongosh mongodb://127.0.0.1:27017 /tmp/seed_civicnexus.js
           rm -f /tmp/seed_civicnexus.js
+
+          # Create database users before enabling access control
+          cat <<'EOF' > /tmp/create_mongo_users.js
+          db = db.getSiblingDB('admin');
+          db.createUser({
+              user: "${MongoAdminUsername}",
+              pwd: "${MongoAdminPassword}",
+              roles: [ { role: "root", db: "admin" } ]
+          });
+
+          db = db.getSiblingDB('civicnexus');
+          db.createUser({
+              user: "${MongoAppUsername}",
+              pwd: "${MongoAppPassword}",
+              roles: [ { role: "readWrite", db: "civicnexus" } ]
+          });
+
+          print("MongoDB users created successfully.");
+          EOF
+          mongosh mongodb://127.0.0.1:27017 /tmp/create_mongo_users.js
+          rm -f /tmp/create_mongo_users.js
+
+          # Enable MongoDB authentication after users are created
+          cat <<'EOF' >> /etc/mongod.conf
+
+          security:
+            authorization: enabled
+          EOF
+          systemctl restart mongod
+
+          for attempt in {1..30}; do
+            if mongosh "mongodb://${MongoAppUsername}:${MongoAppPassword}@127.0.0.1:27017/civicnexus?authSource=civicnexus" --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; then
+              break
+            fi
+            sleep 5
+          done
       Tags:
         - Key: Name
           Value: !Sub 'civicnexus-mongodb-instance-${GroupName}'
@@ -432,7 +490,9 @@ Resources:
           error_reporting(E_ALL);
 
           $mongoIp = "${MongoEC2Instance.PrivateIp}";
-          $uri = "mongodb://$mongoIp:27017";
+          $mongoUser = "${MongoAppUsername}";
+          $mongoPassword = "${MongoAppPassword}";
+          $uri = "mongodb://" . rawurlencode($mongoUser) . ":" . rawurlencode($mongoPassword) . "@$mongoIp:27017/civicnexus?authSource=civicnexus";
         
           try {
               require '/var/www/html/vendor/autoload.php';
@@ -526,7 +586,9 @@ Resources:
           header('Content-Type: application/json');
 
           $mongoIp = "${MongoEC2Instance.PrivateIp}";
-          $uri = "mongodb://$mongoIp:27017";
+          $mongoUser = "${MongoAppUsername}";
+          $mongoPassword = "${MongoAppPassword}";
+          $uri = "mongodb://" . rawurlencode($mongoUser) . ":" . rawurlencode($mongoPassword) . "@$mongoIp:27017/civicnexus?authSource=civicnexus";
 
           try {
               require '/var/www/html/vendor/autoload.php';
@@ -534,7 +596,7 @@ Resources:
                   'serverSelectionTimeoutMS' => 2000,
                   'connectTimeoutMS' => 2000
               ]);
-              $client->selectDatabase('admin')->command(['ping' => 1]);
+              $client->selectDatabase('civicnexus')->command(['ping' => 1]);
 
               echo json_encode([
                   'service' => 'civicnexus-dashboard',
