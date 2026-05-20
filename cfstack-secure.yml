@@ -389,33 +389,53 @@ Resources:
     Properties:
       GroupDescription: 'Allows MongoDB only from the webserver security group'
       VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 27017
-          ToPort: 27017
-          SourceSecurityGroupId: !Ref WebServerSecurityGroup
-        - IpProtocol: tcp
-          FromPort: 27017
-          ToPort: 27017
-          SourceSecurityGroupId: !Ref OpenVPNSecurityGroup
-        - IpProtocol: tcp
-          FromPort: 27017
-          ToPort: 27017
-          SourceSecurityGroupId: !Ref MongoSecurityGroup
-        - IpProtocol: tcp
-          FromPort: 22
-          ToPort: 22
-          SourceSecurityGroupId: !Ref OpenVPNSecurityGroup
       Tags:
         - Key: Name
           Value: !Sub 'civicnexus-mongodb-sg-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
+  MongoIngressFromWebServer:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref MongoSecurityGroup
+      IpProtocol: tcp
+      FromPort: 27017
+      ToPort: 27017
+      SourceSecurityGroupId: !Ref WebServerSecurityGroup
+
+  MongoIngressFromOpenVPN:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref MongoSecurityGroup
+      IpProtocol: tcp
+      FromPort: 27017
+      ToPort: 27017
+      SourceSecurityGroupId: !Ref OpenVPNSecurityGroup
+
+  MongoIngressFromReplicaMembers:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref MongoSecurityGroup
+      IpProtocol: tcp
+      FromPort: 27017
+      ToPort: 27017
+      SourceSecurityGroupId: !Ref MongoSecurityGroup
+
+  MongoSSHFromOpenVPN:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref MongoSecurityGroup
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      SourceSecurityGroupId: !Ref OpenVPNSecurityGroup
+
   MongoEC2Instance:
     Type: 'AWS::EC2::Instance'
     DependsOn:
       - PrivateDefaultRoute
+      - MongoIngressFromReplicaMembers
       - MongoReplicaInstance2
       - MongoReplicaInstance3
     Properties:
@@ -609,7 +629,9 @@ Resources:
 
   MongoReplicaInstance2:
     Type: 'AWS::EC2::Instance'
-    DependsOn: PrivateDefaultRoute
+    DependsOn:
+      - PrivateDefaultRoute
+      - MongoIngressFromReplicaMembers
     Properties:
       InstanceType: t3.small
       SubnetId: !Ref PrivateSubnet2
@@ -663,7 +685,9 @@ Resources:
 
   MongoReplicaInstance3:
     Type: 'AWS::EC2::Instance'
-    DependsOn: PrivateDefaultRoute
+    DependsOn:
+      - PrivateDefaultRoute
+      - MongoIngressFromReplicaMembers
     Properties:
       InstanceType: t3.small
       SubnetId: !Ref PrivateSubnet3
