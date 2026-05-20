@@ -93,6 +93,7 @@ HEADER_FILE="$OUT_DIR/${TODAY}_dashboard_http_headers.txt"
 HOME_FILE="$OUT_DIR/${TODAY}_dashboard_homepage.html"
 HEALTH_FILE="$OUT_DIR/${TODAY}_health_check.txt"
 CONTROL_CHECK_FILE="$OUT_DIR/${TODAY}_webserver_control_checks.txt"
+FINAL_NOTE_FILE="$OUT_DIR/${TODAY}_webserver_final_notes.md"
 
 curl -I --max-time 10 "http://$WEB_IP" > "$HEADER_FILE" || true
 curl --max-time 15 "http://$WEB_IP" > "$HOME_FILE" || true
@@ -142,6 +143,38 @@ curl --max-time 10 "http://$WEB_IP/health.php" > "$HEALTH_FILE" || true
   fi
 } > "$CONTROL_CHECK_FILE"
 
+cat > "$FINAL_NOTE_FILE" <<EOF
+# Web/App Evidence Notes
+
+Stack: $STACK_NAME
+
+Web IP: $WEB_IP
+
+This is the webserver and dashboard evidence set.
+
+## What I checked
+
+1. The web EC2 instance is running and has the expected security group.
+2. The dashboard loads from the public web address.
+3. \`/health.php\` confirms the web app can reach MongoDB.
+4. The HTTP response includes the agreed browser security headers.
+5. The web EC2 metadata setting uses IMDSv2.
+6. The dashboard does not show full personnel or operational records publicly.
+
+## Main evidence files
+
+1. ${TODAY}_dashboard_http_headers.txt
+2. ${TODAY}_health_check.txt
+3. ${TODAY}_dashboard_homepage.html
+4. ${TODAY}_webserver_metadata_options.txt
+5. ${TODAY}_webserver_sg_rules.json
+6. ${TODAY}_webserver_control_checks.txt
+
+## Short report wording
+
+For my part, I focused on the webserver and PHP dashboard. I checked that the dashboard still works after the security changes, that the health endpoint can reach the database, and that the web response includes the expected hardening headers. I also checked the EC2 metadata setting and captured the webserver security group evidence.
+EOF
+
 cat > "$OUT_DIR/${TODAY}_webserver_evidence_summary.md" <<EOF
 # Webserver Evidence Summary
 
@@ -169,6 +202,7 @@ Files collected:
 8. ${TODAY}_dashboard_homepage.html
 9. ${TODAY}_health_check.txt
 10. ${TODAY}_webserver_control_checks.txt
+11. ${TODAY}_webserver_final_notes.md
 
 Manual screenshots still useful:
 
