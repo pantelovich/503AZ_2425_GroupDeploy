@@ -13,6 +13,28 @@ Parameters:
   KeyName:
     Type: 'AWS::EC2::KeyPair::KeyName'
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instances.
+  MongoAdminUsername:
+    Type: String
+    Description: Admin username created inside MongoDB.
+    Default: mongoAdmin
+    AllowedPattern: '^[A-Za-z][A-Za-z0-9_]{2,31}$'
+  MongoAdminPassword:
+    Type: String
+    Description: Admin password for MongoDB. Use letters, numbers, and underscores to avoid URI escaping issues.
+    NoEcho: true
+    MinLength: 12
+    AllowedPattern: '^[A-Za-z0-9_]{12,64}$'
+  MongoAppUsername:
+    Type: String
+    Description: Application username used by the PHP dashboard.
+    Default: civicApp
+    AllowedPattern: '^[A-Za-z][A-Za-z0-9_]{2,31}$'
+  MongoAppPassword:
+    Type: String
+    Description: Application password for the PHP dashboard MongoDB user. Use letters, numbers, and underscores to avoid URI escaping issues.
+    NoEcho: true
+    MinLength: 12
+    AllowedPattern: '^[A-Za-z0-9_]{12,64}$'
 
 Conditions:
   CreateVDI: !Equals [!Ref GroupSize, 3]
@@ -136,6 +158,36 @@ Resources:
         - Key: GroupName
           Value: !Ref GroupName
 
+  NatGatewayElasticIP:
+    Type: AWS::EC2::EIP
+    DependsOn: AttachGateway
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-nat-eip-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayElasticIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-nat-gateway-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  PrivateDefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: NatGateway
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
   PrivateSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
@@ -154,13 +206,13 @@ Resources:
   MongoSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
-      GroupDescription: 'Insecure - Allows all traffic to MongoDB'
+      GroupDescription: 'Allows MongoDB only from the webserver security group'
       VpcId: !Ref VPC
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 27017
           ToPort: 27017
-          CidrIp: 0.0.0.0/0
+          SourceSecurityGroupId: !Ref WebServerSecurityGroup
       Tags:
         - Key: Name
           Value: !Sub 'civicnexus-mongodb-sg-${GroupName}'
@@ -169,10 +221,14 @@ Resources:
 
   MongoEC2Instance:
     Type: 'AWS::EC2::Instance'
+    DependsOn: PrivateDefaultRoute
     Properties:
       InstanceType: t3.small
-      SubnetId: !Ref PublicSubnet1
+      SubnetId: !Ref PrivateSubnet1
       KeyName: !Ref KeyName
+      MetadataOptions:
+        HttpTokens: required
+        HttpEndpoint: enabled
       SecurityGroupIds:
         - !Ref MongoSecurityGroup
       ImageId: ami-00ca32bbc84273381 # Amazon Linux 2023
@@ -190,9 +246,147 @@ Resources:
           # Start and enable MongoDB
           systemctl start mongod
           systemctl enable mongod
-          # Insecurely configure MongoDB to listen on all interfaces
+          # Listen for VPC clients that are allowed by the security group
           sed -i 's/bindIp: 127.0.0.1/bindIp: 0.0.0.0/g' /etc/mongod.conf
           systemctl restart mongod
+
+          # Wait for MongoDB before loading local demo data
+          for attempt in {1..30}; do
+            if mongosh mongodb://127.0.0.1:27017 --quiet --eval 'db.adminCommand({ping:1})' >/dev/null 2>&1; then
+              break
+            fi
+            sleep 5
+          done
+
+          # Seed demo data locally because MongoDB is not publicly reachable
+          cat <<'EOF' > /tmp/seed_civicnexus.js
+          db = db.getSiblingDB('civicnexus');
+
+          db.urban_environment_data.drop();
+          db.personnel_data.drop();
+          db.system_operational_logs.drop();
+
+          db.urban_environment_data.insertMany([
+              {
+                  record_id: "traffic-flow-001",
+                  data_type: "traffic_flow_monitor",
+                  location: "Central Avenue / Sector 4",
+                  timestamp: new Date("2026-04-29T08:15:00Z"),
+                  reading_value: 428,
+                  unit: "vehicles/hour",
+                  metadata: {
+                      sensor_vendor: "CivicSense",
+                      status: "normal"
+                  }
+              },
+              {
+                  record_id: "air-quality-014",
+                  data_type: "air_quality_reading",
+                  location: "Riverside Monitoring Station",
+                  timestamp: new Date("2026-04-29T08:20:00Z"),
+                  reading_value: 41,
+                  unit: "AQI",
+                  metadata: {
+                      pm25: 12,
+                      pm10: 18,
+                      status: "good"
+                  }
+              }
+          ]);
+
+          db.personnel_data.insertMany([
+              {
+                  employee_id: "CN-001",
+                  name: "Dr. Maya Patel",
+                  job_role: "Urban Planner",
+                  contact: "maya.patel@civicnexus.local",
+                  security_clearance: "Level 3"
+              },
+              {
+                  employee_id: "CN-014",
+                  name: "Jordan Ellis",
+                  job_role: "Field Technician",
+                  contact: "jordan.ellis@civicnexus.local",
+                  security_clearance: "Level 2"
+              }
+          ]);
+
+          db.system_operational_logs.insertMany([
+              {
+                  log_id: "log-traffic-9001",
+                  timestamp: new Date("2026-04-29T08:25:00Z"),
+                  subsystem: "Traffic Light Control",
+                  event_type: "sequence_update",
+                  details: {
+                      junction: "A12",
+                      plan: "peak_morning_adjustment",
+                      green_seconds: 42
+                  }
+              },
+              {
+                  log_id: "log-waste-9002",
+                  timestamp: new Date("2026-04-29T08:40:00Z"),
+                  subsystem: "Waste Management Dispatch",
+                  event_type: "route_optimised",
+                  details: {
+                      district: "North Dock",
+                      crew_id: "WM-07",
+                      pickup_priority: "high"
+                  }
+              },
+              {
+                  log_id: "log-transport-9003",
+                  timestamp: new Date("2026-04-29T08:55:00Z"),
+                  subsystem: "Public Transport Dispatch",
+                  event_type: "service_alert",
+                  details: {
+                      line: "TR-16",
+                      status: "minor_delay",
+                      reason: "signal_check_in_progress"
+                  }
+              }
+          ]);
+
+          print("CivicNexus database populated successfully.");
+          EOF
+          mongosh mongodb://127.0.0.1:27017 /tmp/seed_civicnexus.js
+          rm -f /tmp/seed_civicnexus.js
+
+          # Create database users before enabling access control
+          cat <<'EOF' > /tmp/create_mongo_users.js
+          db = db.getSiblingDB('admin');
+          db.createUser({
+              user: "${MongoAdminUsername}",
+              pwd: "${MongoAdminPassword}",
+              roles: [ { role: "root", db: "admin" } ]
+          });
+
+          db = db.getSiblingDB('civicnexus');
+          db.createUser({
+              user: "${MongoAppUsername}",
+              pwd: "${MongoAppPassword}",
+              roles: [ { role: "readWrite", db: "civicnexus" } ]
+          });
+
+          print("MongoDB users created successfully.");
+          EOF
+          mongosh mongodb://127.0.0.1:27017 /tmp/create_mongo_users.js
+          rm -f /tmp/create_mongo_users.js
+
+          # Enable MongoDB authentication after users are created
+          cat <<'EOF' >> /etc/mongod.conf
+
+          security:
+            authorization: enabled
+          EOF
+          systemctl restart mongod
+
+          for attempt in {1..30}; do
+            if mongosh "mongodb://${MongoAppUsername}:${MongoAppPassword}@127.0.0.1:27017/civicnexus?authSource=civicnexus" --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; then
+              break
+            fi
+            sleep 5
+          done
       Tags:
         - Key: Name
           Value: !Sub 'civicnexus-mongodb-instance-${GroupName}'
@@ -224,6 +418,9 @@ Resources:
       InstanceType: t2.micro
       SubnetId: !Ref PublicSubnet1
       KeyName: !Ref KeyName
+      MetadataOptions:
+        HttpTokens: required
+        HttpEndpoint: enabled
       SecurityGroupIds:
         - !Ref WebServerSecurityGroup
       ImageId: ami-00ca32bbc84273381 # Amazon Linux 2023
@@ -247,7 +444,7 @@ Resources:
         
           # Install the web server and PHP packages
           dnf install -y httpd php php-fpm php-pear php-devel gcc make \
-                         php-cli php-json php-openssl unzip
+                         php-cli php-json php-openssl unzip libzstd-devel
         
           # Composer needs HOME set during install
           export HOME=/root
@@ -260,7 +457,7 @@ Resources:
         
           # Install MongoDB PHP Driver via PECL
           pecl channel-update pecl.php.net
-          printf "\n" | pecl install mongodb
+          printf "\n" | pecl install mongodb-1.21.2
           echo "extension=mongodb.so" > /etc/php.d/50-mongodb.ini
         
           # Log errors instead of showing them on the page
@@ -269,6 +466,20 @@ Resources:
         
           # Allow Apache network access
           setsebool -P httpd_can_network_connect 1
+
+          # Reduce HTTP information leakage from Apache responses
+          cat <<'EOF' > /etc/httpd/conf.d/security-headers.conf
+          ServerTokens Prod
+          ServerSignature Off
+          TraceEnable Off
+          Header always set X-Content-Type-Options "nosniff"
+          Header always set X-Frame-Options "DENY"
+          Header always set Referrer-Policy "no-referrer"
+          Header always set Cache-Control "no-store"
+          <Directory "/var/www/html">
+              Options -Indexes
+          </Directory>
+          EOF
         
           # Write dashboard app
           cat <<'EOF' > /var/www/html/index.php
@@ -279,11 +490,16 @@ Resources:
           error_reporting(E_ALL);
 
           $mongoIp = "${MongoEC2Instance.PrivateIp}";
-          $uri = "mongodb://$mongoIp:27017";
+          $mongoUser = "${MongoAppUsername}";
+          $mongoPassword = "${MongoAppPassword}";
+          $uri = "mongodb://" . rawurlencode($mongoUser) . ":" . rawurlencode($mongoPassword) . "@$mongoIp:27017/civicnexus?authSource=civicnexus";
         
           try {
               require '/var/www/html/vendor/autoload.php';
-              $client = new MongoDB\Client($uri);
+              $client = new MongoDB\Client($uri, [], [
+                  'serverSelectionTimeoutMS' => 2000,
+                  'connectTimeoutMS' => 2000
+              ]);
               $db = $client->civicnexus;
           ?>
           <!DOCTYPE html>
@@ -323,20 +539,16 @@ Resources:
                 </table>
               </details>
         
-              <!-- Personnel Data -->
+              <!-- Personnel Data Summary -->
               <details>
-              <summary>Personnel Data</summary>
+              <summary>Personnel Data Summary</summary>
                 <table>
-                <tr><th>Employee ID</th><th>Name</th><th>Job Role</th><th>Contact</th><th>Security Clearance</th></tr>
-                <?php foreach ($db->personnel_data->find() as $doc): ?>
-                        <tr>
-                    <td><?= htmlspecialchars($doc['employee_id'] ?? 'N/A') ?></td>
-                            <td><?= htmlspecialchars($doc['name'] ?? 'N/A') ?></td>
-                            <td><?= htmlspecialchars($doc['job_role'] ?? 'N/A') ?></td>
-                            <td><?= htmlspecialchars($doc['contact'] ?? 'N/A') ?></td>
-                    <td><?= htmlspecialchars($doc['security_clearance'] ?? 'N/A') ?></td>
-                        </tr>
-                    <?php endforeach; ?>
+                <tr><th>Collection</th><th>Record Count</th><th>Display Status</th></tr>
+                <tr>
+                  <td>personnel_data</td>
+                  <td><?= htmlspecialchars((string) $db->personnel_data->countDocuments()) ?></td>
+                  <td>Restricted from public dashboard view</td>
+                </tr>
                 </table>
               </details>
         
@@ -351,7 +563,7 @@ Resources:
                             <td><?= $doc['timestamp'] ? htmlspecialchars($doc['timestamp']->toDateTime()->format('Y-m-d H:i:s')) : 'N/A' ?></td>
                     <td><?= htmlspecialchars($doc['subsystem'] ?? 'N/A') ?></td>
                             <td><?= htmlspecialchars($doc['event_type'] ?? 'N/A') ?></td>
-                            <td><pre><?= htmlspecialchars(json_encode($doc['details'] ?? [], JSON_PRETTY_PRINT)) ?></pre></td>
+                            <td>Restricted from public dashboard view</td>
                         </tr>
                     <?php endforeach; ?>
                 </table>
@@ -372,17 +584,45 @@ Resources:
           ini_set('display_errors', 0);
           ini_set('log_errors', 1);
           header('Content-Type: application/json');
-          echo json_encode([
-              'service' => 'civicnexus-dashboard',
-              'status' => 'ok'
-          ]);
+
+          $mongoIp = "${MongoEC2Instance.PrivateIp}";
+          $mongoUser = "${MongoAppUsername}";
+          $mongoPassword = "${MongoAppPassword}";
+          $uri = "mongodb://" . rawurlencode($mongoUser) . ":" . rawurlencode($mongoPassword) . "@$mongoIp:27017/civicnexus?authSource=civicnexus";
+
+          try {
+              require '/var/www/html/vendor/autoload.php';
+              $client = new MongoDB\Client($uri, [], [
+                  'serverSelectionTimeoutMS' => 2000,
+                  'connectTimeoutMS' => 2000
+              ]);
+              $client->selectDatabase('civicnexus')->command(['ping' => 1]);
+
+              echo json_encode([
+                  'service' => 'civicnexus-dashboard',
+                  'status' => 'ok',
+                  'database' => 'reachable'
+              ]);
+          } catch (Exception $e) {
+              error_log("Health check database error: " . $e->getMessage());
+              http_response_code(503);
+              echo json_encode([
+                  'service' => 'civicnexus-dashboard',
+                  'status' => 'degraded',
+                  'database' => 'unreachable'
+              ]);
+          }
           ?>
           EOF
         
           # Run Composer as ec2-user, then restore ownership
           chown -R ec2-user:ec2-user /var/www/html
           cd /var/www/html
-          sudo -u ec2-user composer require mongodb/mongodb
+          sudo -u ec2-user composer require 'mongodb/mongodb:^1.20'
+          rm -f /usr/local/bin/composer
+          rm -rf /root/.cache/composer /tmp/pear
+          dnf remove -y gcc make php-devel php-pear || true
+          dnf clean all
           chown -R apache:apache /var/www/html
           chmod -R 755 /var/www/html
         
@@ -444,9 +684,15 @@ Outputs:
   MongoServerPrivateIP:
     Description: 'Private IP used by the web application to reach MongoDB'
     Value: !GetAtt MongoEC2Instance.PrivateIp
+  MongoServerSubnetId:
+    Description: 'Private subnet used by the MongoDB EC2 instance'
+    Value: !Ref PrivateSubnet1
   MongoServerPublicIP:
-    Description: 'The Public IP of the MongoDB EC2 Instance. Use this to connect from other instances in the VPC.'
-    Value: !GetAtt MongoEC2Instance.PublicIp
+    Description: 'Secure stack does not assign a public IP to MongoDB'
+    Value: 'None'
+  NatGatewayId:
+    Description: 'NAT Gateway used for private subnet outbound setup access'
+    Value: !Ref NatGateway
   VDIInstanceId:
     Description: 'Instance ID of the VDI instance (if created)'
     Condition: CreateVDI

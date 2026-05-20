@@ -1,10 +1,45 @@
 name: Deploy CivicNexus CloudFormation Stack
 
 on:
+  push:
+  pull_request:
   workflow_dispatch:
+    inputs:
+      template_file:
+        description: CloudFormation template to deploy
+        required: true
+        default: cfstack-secure.yml
+        type: choice
+        options:
+          - cfstack-secure.yml
+          - cfstack.yml
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Validate YAML templates
+        run: |
+          ruby -e 'require "yaml"; YAML.load_file("cfstack.yml"); YAML.load_file("cfstack-secure.yml")'
+
+      - name: Check shell script syntax
+        run: |
+          bash -n scripts/collect_database_evidence.sh
+          bash -n scripts/collect_webserver_evidence.sh
+          bash -n scripts/update_lab_credentials.sh
+
+      - name: Run ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+          shellcheck scripts/*.sh
+
   deploy:
+    if: github.event_name == 'workflow_dispatch'
+    needs: validate
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
@@ -19,13 +54,13 @@ jobs:
           aws-region: us-east-1
 
       - name: Validate CloudFormation template
-        run: aws cloudformation validate-template --template-body file://cfstack.yml
+        run: aws cloudformation validate-template --template-body file://${{ inputs.template_file }}
 
       - name: Deploy Main CivicNexus Stack
         run: |
           aws cloudformation deploy \
             --stack-name ${{ secrets.GROUP_NAME }}-civicnexus-stack \
-            --template-file cfstack.yml \
+            --template-file ${{ inputs.template_file }} \
             --capabilities CAPABILITY_IAM \
             --parameter-overrides \
               GroupName=${{ secrets.GROUP_NAME }} \
@@ -33,6 +68,7 @@ jobs:
               KeyName=${{ secrets.KEY_NAME }}
 
       - name: Install MongoDB Shell
+        if: inputs.template_file == 'cfstack.yml'
         run: |
           wget -qO- https://www.mongodb.org/static/pgp/server-7.0.asc | sudo tee /etc/apt/trusted.gpg.d/server-7.0.asc
           echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
@@ -40,6 +76,7 @@ jobs:
           sudo apt-get install -y mongodb-mongosh
 
       - name: Get MongoDB Server Public IP
+        if: inputs.template_file == 'cfstack.yml'
         id: getDBIp
         run: |
           DB_IP=$(aws cloudformation describe-stacks \
@@ -49,6 +86,7 @@ jobs:
           echo "DB_SERVER_IP=$DB_IP" >> $GITHUB_ENV
           
       - name: Load Data into MongoDB
+        if: inputs.template_file == 'cfstack.yml'
         run: |
           echo "Attempting to connect to the database at $DB_SERVER_IP and load data..."
           # Note: The UserData script on the EC2 instance can take a minute to run.
@@ -62,4 +100,3 @@ jobs:
             --stack-name ${{ secrets.GROUP_NAME }}-civicnexus-stack \
             --query "Stacks[0].Outputs" \
             --output table
-
