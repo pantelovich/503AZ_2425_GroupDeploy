@@ -136,6 +136,36 @@ Resources:
         - Key: GroupName
           Value: !Ref GroupName
 
+  NatGatewayElasticIP:
+    Type: AWS::EC2::EIP
+    DependsOn: AttachGateway
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-nat-eip-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayElasticIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-nat-gateway-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  PrivateDefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: NatGateway
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
   PrivateSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
@@ -169,10 +199,14 @@ Resources:
 
   MongoEC2Instance:
     Type: 'AWS::EC2::Instance'
+    DependsOn: PrivateDefaultRoute
     Properties:
       InstanceType: t3.small
-      SubnetId: !Ref PublicSubnet1
+      SubnetId: !Ref PrivateSubnet1
       KeyName: !Ref KeyName
+      MetadataOptions:
+        HttpTokens: required
+        HttpEndpoint: enabled
       SecurityGroupIds:
         - !Ref MongoSecurityGroup
       ImageId: ami-00ca32bbc84273381 # Amazon Linux 2023
@@ -588,9 +622,15 @@ Outputs:
   MongoServerPrivateIP:
     Description: 'Private IP used by the web application to reach MongoDB'
     Value: !GetAtt MongoEC2Instance.PrivateIp
+  MongoServerSubnetId:
+    Description: 'Private subnet used by the MongoDB EC2 instance'
+    Value: !Ref PrivateSubnet1
   MongoServerPublicIP:
-    Description: 'The Public IP of the MongoDB EC2 Instance. Use this to connect from other instances in the VPC.'
-    Value: !GetAtt MongoEC2Instance.PublicIp
+    Description: 'Secure stack does not assign a public IP to MongoDB'
+    Value: 'None'
+  NatGatewayId:
+    Description: 'NAT Gateway used for private subnet outbound setup access'
+    Value: !Ref NatGateway
   VDIInstanceId:
     Description: 'Instance ID of the VDI instance (if created)'
     Condition: CreateVDI

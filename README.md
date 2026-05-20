@@ -26,7 +26,9 @@ The secure stack currently focuses on:
 - Apache security headers
 - IMDSv2 on the web EC2 instance
 - web health check with MongoDB reachability
+- MongoDB placed in a private subnet with no public IP
 - MongoDB `27017` restricted to the webserver security group
+- NAT Gateway for private subnet outbound setup access
 - local database seeding during secure stack bootstrap
 
 ## Deploy
@@ -65,3 +67,5 @@ scripts/list_lab_resources.sh
 ```
 
 Keep the current evidence stack only while testing or collecting evidence. Delete old duplicate coursework stacks when they are no longer needed.
+
+The secure stack creates a NAT Gateway so the private MongoDB instance can download packages during setup. NAT Gateway can use AWS lab credit quickly, so delete the secure stack after evidence is saved.
