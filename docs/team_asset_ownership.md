@@ -27,8 +27,9 @@ Current secure target:
 3. Use NAT only if the private instance needs outbound setup access.
 4. Use VPN/SSM for admin access where possible, not public SSH.
 5. Keep MongoDB open only to the web/app security group.
-6. Treat the 402/S3 frontend as an extra after the secure stack works.
-7. Add OpenVPN as an admin route into the VPC, so private MongoDB does not need a public IP.
+6. Run MongoDB as a three-node private replica set where possible, not one public database server.
+7. Treat the 402/S3 frontend as an extra after the secure stack works.
+8. Add OpenVPN as an admin route into the VPC, so private MongoDB does not need a public IP.
 
 ## Current Work
 
@@ -72,3 +73,4 @@ Evidence can be:
 | 2026-05-20 | Pantelis | Added agreed next target: private MongoDB subnet, NAT only for setup, VPN/SSM for admin, 402/S3 later. |
 | 2026-05-20 | Pantelis | Updated secure template so MongoDB uses a private subnet and NAT is used for outbound setup. |
 | 2026-05-21 | Mike | Started OpenVPN admin access work for private MongoDB testing and evidence. |
+| 2026-05-21 | Mike | Added secure MongoDB replica set target in private subnets. |
