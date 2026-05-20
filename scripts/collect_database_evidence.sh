@@ -72,7 +72,7 @@ if [[ -n "$MONGO_SG_ID" && "$MONGO_SG_ID" != "None" ]]; then
   aws ec2 describe-security-groups \
     --region "$REGION" \
     --group-ids "$MONGO_SG_ID" \
-    --query "SecurityGroups[0].IpPermissions[*].[IpProtocol,FromPort,ToPort,IpRanges[*].CidrIp]" \
+    --query "SecurityGroups[0].IpPermissions[*].{Protocol:IpProtocol,FromPort:FromPort,ToPort:ToPort,CidrSources:IpRanges[].CidrIp,SecurityGroupSources:UserIdGroupPairs[].GroupId}" \
     --output table > "$OUT_DIR/${TODAY}_mongodb_sg_inbound_summary.txt" || true
 else
   echo "MongoDB security group details skipped because SG lookup was not available." > "$OUT_DIR/${TODAY}_mongodb_sg_rules.json"
@@ -91,9 +91,15 @@ if command -v mongosh >/dev/null 2>&1; then
       >> "$OUT_DIR/${TODAY}_mongodb_public_access_check.txt"
   fi
 
-  mongosh "$PUBLIC_MONGO_URI" --quiet --eval \
+  if mongosh "$PUBLIC_MONGO_URI" --quiet --eval \
     'const dbs=db.adminCommand({listDatabases:1}); printjson(dbs.databases.map(d => ({name:d.name,sizeOnDisk:d.sizeOnDisk}))); const auth=db.adminCommand({connectionStatus:1}); printjson({authenticatedUsers:auth.authInfo.authenticatedUsers}); const d=db.getSiblingDB("civicnexus"); printjson({urban:d.urban_environment_data.countDocuments(), personnel:d.personnel_data.countDocuments(), logs:d.system_operational_logs.countDocuments()});' \
-    > "$OUT_DIR/${TODAY}_mongodb_connection_check.txt" || true
+    > "$OUT_DIR/${TODAY}_mongodb_connection_check.txt" 2>&1; then
+    echo "CONNECTED - collection count check completed from this host." \
+      >> "$OUT_DIR/${TODAY}_mongodb_connection_check.txt"
+  else
+    echo "BLOCKED - collection count check could not run from this host because MongoDB public access is blocked." \
+      >> "$OUT_DIR/${TODAY}_mongodb_connection_check.txt"
+  fi
 else
   echo "mongosh not installed, public access check skipped." > "$OUT_DIR/${TODAY}_mongodb_public_access_check.txt"
   echo "mongosh not installed, database connection check skipped." > "$OUT_DIR/${TODAY}_mongodb_connection_check.txt"
