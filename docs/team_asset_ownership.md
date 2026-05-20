@@ -74,3 +74,4 @@ Evidence can be:
 | 2026-05-20 | Pantelis | Updated secure template so MongoDB uses a private subnet and NAT is used for outbound setup. |
 | 2026-05-21 | Mike | Started OpenVPN admin access work for private MongoDB testing and evidence. |
 | 2026-05-21 | Mike | Added secure MongoDB replica set target in private subnets. |
+| 2026-05-21 | Pantelis | Tightened MongoDB so it listens only on localhost and its private VPC IP. |

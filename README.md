@@ -28,6 +28,7 @@ The secure stack currently focuses on:
 - web health check with MongoDB reachability
 - MongoDB placed in a private subnet with no public IP
 - MongoDB `27017` restricted to the webserver security group
+- MongoDB bound only to localhost and its private VPC IP
 - NAT Gateway for private subnet outbound setup access
 - local database seeding during secure stack bootstrap
 
