@@ -457,7 +457,7 @@ Resources:
         
           # Install MongoDB PHP Driver via PECL
           pecl channel-update pecl.php.net
-          printf "\n" | pecl install mongodb
+          printf "\n" | pecl install mongodb-1.21.2
           echo "extension=mongodb.so" > /etc/php.d/50-mongodb.ini
         
           # Log errors instead of showing them on the page
@@ -618,7 +618,7 @@ Resources:
           # Run Composer as ec2-user, then restore ownership
           chown -R ec2-user:ec2-user /var/www/html
           cd /var/www/html
-          sudo -u ec2-user composer require mongodb/mongodb
+          sudo -u ec2-user composer require 'mongodb/mongodb:^1.20'
           rm -f /usr/local/bin/composer
           rm -rf /root/.cache/composer /tmp/pear
           dnf remove -y gcc make php-devel php-pear || true
