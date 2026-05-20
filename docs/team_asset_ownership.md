@@ -75,3 +75,4 @@ Evidence can be:
 | 2026-05-21 | Mike | Started OpenVPN admin access work for private MongoDB testing and evidence. |
 | 2026-05-21 | Mike | Added secure MongoDB replica set target in private subnets. |
 | 2026-05-21 | Pantelis | Tightened MongoDB so it listens only on localhost and its private VPC IP. |
+| 2026-05-21 | Pantelis | Added MongoDB backup and restore evidence support for availability. |
