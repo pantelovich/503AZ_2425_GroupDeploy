@@ -14,6 +14,7 @@ The project keeps the weak baseline and the improved secure version separate so 
 | `scripts/update_lab_credentials.sh` | Updates local AWS CLI and GitHub Actions secrets from the Learner Lab credentials block. |
 | `scripts/collect_webserver_evidence.sh` | Collects webserver, dashboard, header, health check, and security group evidence. |
 | `scripts/collect_database_evidence.sh` | Collects MongoDB instance, security group, and access evidence. |
+| `scripts/list_lab_resources.sh` | Lists active AWS lab resources so unused stacks can be deleted before they waste credit. |
 | `docs/team_asset_ownership.md` | Records who worked on which asset and what changed. |
 
 ## Current Secure Direction
@@ -54,3 +55,13 @@ scripts/collect_database_evidence.sh <stack-name> <output-folder>
 ```
 
 Do not commit evidence dumps, screenshots, credentials, or private keys to this repository.
+
+## Lab Credit Check
+
+Before finishing a work session, check what is still running:
+
+```bash
+scripts/list_lab_resources.sh
+```
+
+Keep the current evidence stack only while testing or collecting evidence. Delete old duplicate coursework stacks when they are no longer needed.

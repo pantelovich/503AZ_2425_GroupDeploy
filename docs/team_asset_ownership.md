@@ -78,3 +78,4 @@ Only claim a control is implemented when there is matching evidence such as:
 | 2026-05-19 | Pantelis | Restricted secure-stack MongoDB access to the webserver security group and moved demo data seeding into MongoDB instance bootstrap so public database loading is no longer needed. |
 | 2026-05-19 | Pantelis | Updated database evidence collection to record whether the public MongoDB endpoint is connected or blocked from outside the VPC. |
 | 2026-05-20 | Pantelis | Cleaned database evidence output for security-group-source rules and blocked public MongoDB connection checks. |
+| 2026-05-20 | Pantelis | Added `scripts/list_lab_resources.sh` to check active stacks, EC2 instances, NAT gateways, and Elastic IPs before ending lab sessions. |
