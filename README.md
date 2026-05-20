@@ -31,6 +31,7 @@ The secure stack currently focuses on:
 - MongoDB bound only to localhost and its private VPC IP
 - NAT Gateway for private subnet outbound setup access
 - local database seeding during secure stack bootstrap
+- MongoDB backup and restore check, with backup output stored in an encrypted S3 bucket
 
 ## Deploy
 
@@ -70,3 +71,5 @@ scripts/list_lab_resources.sh
 Keep the current evidence stack only while testing or collecting evidence. Delete old duplicate coursework stacks when they are no longer needed.
 
 The secure stack creates a NAT Gateway so the private MongoDB instance can download packages during setup. NAT Gateway can use AWS lab credit quickly, so delete the secure stack after evidence is saved.
+
+The MongoDB backup bucket is retained so the backup evidence is not removed when the stack is deleted. Empty and delete that bucket manually after the evidence is no longer needed.

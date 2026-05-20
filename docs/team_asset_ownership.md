@@ -71,3 +71,4 @@ Evidence can be:
 | 2026-05-20 | Pantelis | Added agreed next target: private MongoDB subnet, NAT only for setup, VPN/SSM for admin, 402/S3 later. |
 | 2026-05-20 | Pantelis | Updated secure template so MongoDB uses a private subnet and NAT is used for outbound setup. |
 | 2026-05-21 | Pantelis | Tightened MongoDB so it listens only on localhost and its private VPC IP. |
+| 2026-05-21 | Pantelis | Added MongoDB backup and restore evidence support for availability. |

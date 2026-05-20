@@ -15,6 +15,7 @@ mkdir -p "$OUT_DIR"
 
 MONGO_PUBLIC_IP="${MONGO_PUBLIC_IP:-${MONGO_IP:-}}"
 MONGO_PRIVATE_IP="${MONGO_PRIVATE_IP:-}"
+BACKUP_BUCKET="${MONGO_BACKUP_BUCKET:-}"
 
 if [[ -z "$MONGO_PUBLIC_IP" ]]; then
   MONGO_PUBLIC_IP="$(aws cloudformation describe-stacks \
@@ -32,12 +33,24 @@ if [[ -z "$MONGO_PRIVATE_IP" ]]; then
     --output text 2>/dev/null || true)"
 fi
 
+if [[ -z "$BACKUP_BUCKET" ]]; then
+  BACKUP_BUCKET="$(aws cloudformation describe-stacks \
+    --stack-name "$STACK_NAME" \
+    --region "$REGION" \
+    --query "Stacks[0].Outputs[?OutputKey=='MongoBackupBucketName'].OutputValue" \
+    --output text 2>/dev/null || true)"
+fi
+
 if [[ -z "$MONGO_PUBLIC_IP" || "$MONGO_PUBLIC_IP" == "None" ]]; then
   MONGO_PUBLIC_IP="None"
 fi
 
 if [[ -z "$MONGO_PRIVATE_IP" || "$MONGO_PRIVATE_IP" == "None" ]]; then
   MONGO_PRIVATE_IP="None"
+fi
+
+if [[ -z "$BACKUP_BUCKET" || "$BACKUP_BUCKET" == "None" ]]; then
+  BACKUP_BUCKET="None"
 fi
 
 MONGO_INSTANCE_ID="${MONGO_INSTANCE_ID:-}"
@@ -71,6 +84,7 @@ echo "$MONGO_PUBLIC_IP" > "$OUT_DIR/${TODAY}_mongodb_public_ip.txt"
 echo "$MONGO_PRIVATE_IP" > "$OUT_DIR/${TODAY}_mongodb_private_ip.txt"
 echo "$MONGO_INSTANCE_ID" > "$OUT_DIR/${TODAY}_mongodb_instance_id.txt"
 echo "$MONGO_SG_ID" > "$OUT_DIR/${TODAY}_mongodb_security_group_id.txt"
+echo "$BACKUP_BUCKET" > "$OUT_DIR/${TODAY}_mongodb_backup_bucket.txt"
 
 if [[ -n "$MONGO_INSTANCE_ID" && "$MONGO_INSTANCE_ID" != "None" ]]; then
   aws ec2 describe-instances \
@@ -130,6 +144,14 @@ else
   echo "mongosh not installed, database connection check skipped." > "$OUT_DIR/${TODAY}_mongodb_connection_check.txt"
 fi
 
+if [[ "$BACKUP_BUCKET" != "None" ]]; then
+  aws s3 ls "s3://$BACKUP_BUCKET/mongodb/" --recursive \
+    > "$OUT_DIR/${TODAY}_mongodb_backup_objects.txt" 2>&1 || true
+else
+  echo "SKIPPED - backup bucket output is not present on this stack." \
+    > "$OUT_DIR/${TODAY}_mongodb_backup_objects.txt"
+fi
+
 cat > "$OUT_DIR/${TODAY}_mongodb_evidence_summary.md" <<EOF
 # MongoDB Evidence Summary
 
@@ -151,6 +173,12 @@ MongoDB private IP:
 $MONGO_PRIVATE_IP
 \`\`\`
 
+MongoDB backup bucket:
+
+\`\`\`text
+$BACKUP_BUCKET
+\`\`\`
+
 Files collected:
 
 1. ${TODAY}_mongodb_public_ip.txt
@@ -162,6 +190,8 @@ Files collected:
 7. ${TODAY}_mongodb_sg_inbound_summary.txt
 8. ${TODAY}_mongodb_public_access_check.txt
 9. ${TODAY}_mongodb_connection_check.txt
+10. ${TODAY}_mongodb_backup_bucket.txt
+11. ${TODAY}_mongodb_backup_objects.txt
 
 What this supports:
 
@@ -170,6 +200,7 @@ What this supports:
 3. The public MongoDB endpoint can be tested from outside the VPC.
 4. For the secure stack, public access should be blocked or there should be no public IP.
 5. The connection output shows whether the current session has authenticated users when a connection is allowed.
+6. Backup objects can be checked when the secure template includes the MongoDB backup bucket.
 EOF
 
 echo "Database evidence saved in $OUT_DIR"

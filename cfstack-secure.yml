@@ -200,6 +200,65 @@ Resources:
       RouteTableId: !Ref PrivateRouteTable
       SubnetId: !Ref PrivateSubnet2
 
+  MongoBackupBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteLabBackupsAfterSevenDays
+            Status: Enabled
+            ExpirationInDays: 7
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-mongodb-backups-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  MongoBackupRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: MongoBackupS3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !GetAtt MongoBackupBucket.Arn
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !Sub '${MongoBackupBucket.Arn}/*'
+      Tags:
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  MongoBackupInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref MongoBackupRole
+
   # ------------------------------------------------------------#
   # Asset 2: MongoDB EC2 Instance (Student 2)
   # ------------------------------------------------------------#
@@ -226,6 +285,7 @@ Resources:
       InstanceType: t3.small
       SubnetId: !Ref PrivateSubnet1
       KeyName: !Ref KeyName
+      IamInstanceProfile: !Ref MongoBackupInstanceProfile
       MetadataOptions:
         HttpTokens: required
         HttpEndpoint: enabled
@@ -243,6 +303,7 @@ Resources:
           echo "enabled=1" >> /etc/yum.repos.d/mongodb-org-7.0.repo
           echo "gpgkey=https://www.mongodb.org/static/pgp/server-7.0.asc" >> /etc/yum.repos.d/mongodb-org-7.0.repo
           dnf install -y mongodb-org
+          dnf install -y awscli || true
           # Start and enable MongoDB
           systemctl start mongod
           systemctl enable mongod
@@ -389,6 +450,26 @@ Resources:
             fi
             sleep 5
           done
+
+          BACKUP_BUCKET="${MongoBackupBucket}"
+          BACKUP_FILE="/tmp/civicnexus-initial-backup.archive"
+          BACKUP_LOG="/var/log/civicnexus-backup-restore.log"
+          BACKUP_URI="mongodb://${MongoAdminUsername}:${MongoAdminPassword}@127.0.0.1:27017/admin?authSource=admin"
+
+          {
+            echo "CivicNexus MongoDB backup and restore check"
+            date -u
+            mongodump --uri "$BACKUP_URI" --db civicnexus --archive="$BACKUP_FILE"
+            mongorestore --uri "$BACKUP_URI" --archive="$BACKUP_FILE" --nsFrom='civicnexus.*' --nsTo='civicnexus_restore_check.*' --drop
+            mongosh "$BACKUP_URI" --quiet --eval 'const d=db.getSiblingDB("civicnexus_restore_check"); printjson({urban:d.urban_environment_data.countDocuments(), personnel:d.personnel_data.countDocuments(), logs:d.system_operational_logs.countDocuments()}); d.dropDatabase();'
+
+            if command -v aws >/dev/null 2>&1; then
+              aws s3 cp "$BACKUP_FILE" "s3://$BACKUP_BUCKET/mongodb/civicnexus-initial-backup.archive"
+            fi
+          } > "$BACKUP_LOG" 2>&1 || true
+          if command -v aws >/dev/null 2>&1; then
+            aws s3 cp "$BACKUP_LOG" "s3://$BACKUP_BUCKET/mongodb/civicnexus-backup-restore.log" || true
+          fi
       Tags:
         - Key: Name
           Value: !Sub 'civicnexus-mongodb-instance-${GroupName}'
@@ -695,6 +776,9 @@ Outputs:
   NatGatewayId:
     Description: 'NAT Gateway used for private subnet outbound setup access'
     Value: !Ref NatGateway
+  MongoBackupBucketName:
+    Description: 'Encrypted S3 bucket used for MongoDB backup and restore evidence'
+    Value: !Ref MongoBackupBucket
   VDIInstanceId:
     Description: 'Instance ID of the VDI instance (if created)'
     Condition: CreateVDI
