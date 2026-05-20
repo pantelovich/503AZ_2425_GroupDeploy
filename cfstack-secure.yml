@@ -444,7 +444,7 @@ Resources:
         
           # Install the web server and PHP packages
           dnf install -y httpd php php-fpm php-pear php-devel gcc make \
-                         php-cli php-json php-openssl unzip
+                         php-cli php-json php-openssl unzip libzstd-devel
         
           # Composer needs HOME set during install
           export HOME=/root
