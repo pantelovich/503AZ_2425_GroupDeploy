@@ -58,14 +58,29 @@ jobs:
 
       - name: Deploy Main CivicNexus Stack
         run: |
+          PARAMS=(
+            "GroupName=${{ secrets.GROUP_NAME }}"
+            "GroupSize=${{ secrets.GROUP_SIZE }}"
+            "KeyName=${{ secrets.KEY_NAME }}"
+          )
+
+          if [[ "${{ inputs.template_file }}" == "cfstack-secure.yml" ]]; then
+            if [[ -z "${{ secrets.MONGO_ADMIN_PASSWORD }}" || -z "${{ secrets.MONGO_APP_PASSWORD }}" ]]; then
+              echo "MONGO_ADMIN_PASSWORD and MONGO_APP_PASSWORD secrets are required for cfstack-secure.yml"
+              exit 1
+            fi
+
+            PARAMS+=(
+              "MongoAdminPassword=${{ secrets.MONGO_ADMIN_PASSWORD }}"
+              "MongoAppPassword=${{ secrets.MONGO_APP_PASSWORD }}"
+            )
+          fi
+
           aws cloudformation deploy \
             --stack-name ${{ secrets.GROUP_NAME }}-civicnexus-stack \
             --template-file ${{ inputs.template_file }} \
             --capabilities CAPABILITY_IAM \
-            --parameter-overrides \
-              GroupName=${{ secrets.GROUP_NAME }} \
-              GroupSize=${{ secrets.GROUP_SIZE }} \
-              KeyName=${{ secrets.KEY_NAME }}
+            --parameter-overrides "${PARAMS[@]}"
 
       - name: Install MongoDB Shell
         if: inputs.template_file == 'cfstack.yml'
