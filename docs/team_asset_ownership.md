@@ -1,104 +1,61 @@
 # Team Asset Ownership
 
-This file records who is responsible for each part of the CivicNexus security work.
+Short note on who covered what.
 
 Last updated: 2026-05-20
 
 ## Ownership
 
-| Team member | Main asset | Responsibility |
+| Person | Area | Work |
 |---|---|---|
-| Pantelis | Webserver and PHP dashboard | Webserver exposure, PHP dashboard behaviour, web-to-database connection, webserver evidence |
-| Mike | MongoDB database server | MongoDB exposure, database access control, database hardening, backup and recovery evidence |
-| Shared | VPC and network design | Subnets, routing, security group relationships, integration checks, residual risk consistency |
+| Pantelis | Webserver and PHP dashboard | Webserver hardening, dashboard behaviour, health check, web evidence |
+| Mike | MongoDB database | Database exposure, access control, backup and database evidence |
+| Both | Network and final testing | Security group links, integration checks, final evidence |
 
-## Working Rule
+## Notes
 
-`cfstack.yml` is the weak baseline and should not be overwritten.
+`cfstack.yml` is the original weak version.
 
-`cfstack-secure.yml` is the improved version used for agreed controls.
+`cfstack-secure.yml` is the improved version.
 
-Do not claim a control is complete unless the evidence exists.
+We only claim controls when we have evidence.
 
-## Control Areas
+## Current Work
 
-Each person should cover:
+Pantelis:
 
-1. Network controls.
-2. Instance controls.
-3. Server or OS controls.
-4. Data controls.
+1. Web EC2 controls.
+2. PHP dashboard security.
+3. `/health.php` testing.
+4. Web evidence.
 
-## Current Agreed Work
+Mike:
 
-Pantelis is currently covering:
+1. MongoDB access controls.
+2. MongoDB authentication.
+3. Backup and restore evidence.
+4. Database evidence.
 
-1. Web application connection to MongoDB.
-2. PHP error display and logging.
-3. Webserver package/tooling exposure.
-4. Dashboard health check and web evidence.
-5. Public dashboard data minimisation.
+Shared:
 
-Mike is currently covering:
-
-1. MongoDB security group exposure.
-2. MongoDB public/private access.
-3. MongoDB authentication and service hardening.
-4. MongoDB backup, restore, and data evidence.
-
-Shared decisions still need agreement before implementation:
-
-1. Final MongoDB security group source.
-2. Whether MongoDB moves to a private subnet.
-3. Whether dashboard personnel data is hidden, authenticated, or documented as demo exposure.
-4. Final residual risk scores.
-
-## Next Pantelis Work
-
-Pantelis should focus on webserver and application proof:
-
-1. Test the secure stack after each database-side change.
-2. Update the PHP MongoDB connection if Mike adds authentication or changes connection details.
-3. Re-check `/health.php` and confirm it reports the database as reachable.
-4. Re-capture web evidence: dashboard screenshot, health output, HTTP headers, IMDSv2 setting, and web-to-database security group relationship.
-5. Add the final web/app control explanation to the coursework report using evidence from OneDrive.
-6. Check lab resources are deleted after evidence is saved.
-
-## Next Mike Work
-
-Mike should focus on database security proof:
-
-1. Add MongoDB authentication to the secure stack.
-2. Tell Pantelis the exact connection detail change needed for the PHP app.
-3. Prove unauthenticated MongoDB access fails.
-4. Prove the web app still connects using the approved authenticated path.
-5. Add backup and restore evidence for MongoDB.
-6. Add any database monitoring or log evidence that is realistic for the lab.
-7. Update this file after each small milestone and push so Pantelis can see it.
+1. Final deploy.
+2. Final screenshots.
+3. Report evidence table.
 
 ## Evidence Rule
 
-Only claim a control is implemented when there is matching evidence such as:
+Evidence can be:
 
-1. CloudFormation changes.
-2. AWS CLI output.
-3. AWS screenshots.
-4. Application screenshots.
-5. Test output.
+1. AWS output.
+2. Screenshots.
+3. Test results.
+4. CloudFormation changes.
 
 ## Update Log
 
 | Date | Person | Update |
 |---|---|---|
-| 2026-05-17 | Pantelis | Added team asset ownership and clean working boundaries. |
-| 2026-05-17 | Pantelis | Added web-side hardening in `cfstack-secure.yml`: IMDSv2 requirement, Apache security headers, and reduced public dashboard display of personnel/log details. |
-| 2026-05-17 | Pantelis | Updated `scripts/collect_webserver_evidence.sh` to collect health check output, IMDSv2 metadata options, security header checks, and dashboard redaction checks. |
-| 2026-05-17 | Pantelis | Reduced webserver post-install exposure by disabling directory indexes and removing Composer/build tools after dashboard dependencies are installed. |
-| 2026-05-17 | Pantelis | Added GitHub Actions validation for CloudFormation YAML and shell scripts before manual deployment runs. |
-| 2026-05-19 | Pantelis | Updated manual GitHub Actions deployment to use `cfstack-secure.yml` by default while keeping `cfstack.yml` available as the baseline option. |
-| 2026-05-19 | Pantelis | Improved the web health endpoint so it checks MongoDB reachability and reports degraded status if the database cannot be reached. |
-| 2026-05-19 | Mike | Fixed database evidence collection names and added authenticated user output to the MongoDB connection check. |
-| 2026-05-19 | Pantelis | Restricted secure-stack MongoDB access to the webserver security group and moved demo data seeding into MongoDB instance bootstrap so public database loading is no longer needed. |
-| 2026-05-19 | Pantelis | Updated database evidence collection to record whether the public MongoDB endpoint is connected or blocked from outside the VPC. |
-| 2026-05-20 | Pantelis | Cleaned database evidence output for security-group-source rules and blocked public MongoDB connection checks. |
-| 2026-05-20 | Pantelis | Added `scripts/list_lab_resources.sh` to check active stacks, EC2 instances, NAT gateways, and Elastic IPs before ending lab sessions. |
+| 2026-05-17 | Pantelis | Added webserver hardening and health check work. |
+| 2026-05-19 | Mike | Added database evidence fixes. |
+| 2026-05-19 | Pantelis | Restricted MongoDB access to the webserver security group. |
+| 2026-05-20 | Pantelis | Added lab resource checker to avoid leaving AWS resources running. |
