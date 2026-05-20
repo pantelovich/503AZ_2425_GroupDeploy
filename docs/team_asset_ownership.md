@@ -1,72 +1,100 @@
 # Team Asset Ownership
 
-Short note on who covered what.
-
-Last updated: 2026-05-20
+This file records who is responsible for each part of the CivicNexus security work.
+It is used so the group can show who worked on which asset without mixing all
+work into one large change.
 
 ## Ownership
 
-| Person | Area | Work |
+| Team member | Main asset | Responsibility |
 |---|---|---|
-| Pantelis | Webserver and PHP dashboard | Webserver hardening, dashboard behaviour, health check, web evidence |
-| Mike | MongoDB database | Database exposure, access control, backup and database evidence |
-| Both | Network and final testing | Security group links, integration checks, final evidence |
+| Pantelis | Webserver and PHP dashboard | Webserver exposure, PHP dashboard behaviour, web-to-database connection, web evidence |
+| Mike | MongoDB database server | MongoDB exposure, database access control, database hardening, backup/recovery evidence |
+| Shared | VPC and network design | Subnets, routing, security group relationships, residual risk consistency |
 
-## Notes
+## Pantelis Scope
 
-`cfstack.yml` is the original weak version.
+Pantelis is responsible for the webserver and PHP dashboard side of the system.
+This includes how the dashboard is reached from the internet, what data is shown
+to users, and how the webserver connects to MongoDB.
 
-`cfstack-secure.yml` is the improved version.
+Main areas:
 
-We only claim controls when we have evidence.
+1. Webserver security group and public HTTP exposure.
+2. PHP dashboard behaviour and browser error handling.
+3. Web-to-database connection path.
+4. Webserver screenshots, AWS evidence, and test output.
 
-Current secure target:
+## Mike Scope
 
-1. Keep the web/app layer public.
-2. Keep MongoDB in a private subnet with no public IP.
-3. Use NAT only if the private instance needs outbound setup access.
-4. Use VPN/SSM for admin access where possible, not public SSH.
-5. Keep MongoDB open only to the web/app security group.
-6. Treat the 402/S3 frontend as an extra after the secure stack works.
+Mike is responsible for the MongoDB database server and database security work.
+This includes whether MongoDB is publicly reachable, how access is controlled,
+and whether there is evidence for backup and recovery.
 
-## Current Work
+Main areas:
 
-Pantelis:
+1. MongoDB security group and port `27017` exposure.
+2. MongoDB public/private network placement.
+3. MongoDB authentication and service hardening.
+4. Database backup, recovery, logging, and evidence.
 
-1. Web EC2 controls.
-2. PHP dashboard security.
-3. `/health.php` testing.
-4. Web evidence.
+## Shared Scope
 
-Mike:
+Some controls affect both sides, so they must be agreed before changes are made.
+The main shared area is the relationship between the webserver and MongoDB.
 
-1. MongoDB access controls.
-2. MongoDB authentication.
-3. Backup and restore evidence.
-4. Database evidence.
+Shared areas:
 
-Shared:
+1. VPC, subnet, and route table design.
+2. Security group source and destination relationship.
+3. Residual risk scoring after controls are proven.
+4. Final framework wording and presentation explanation.
 
-1. Final deploy.
-2. Final screenshots.
-3. Report evidence table.
+## Working Rule
+
+`cfstack.yml` is the weak baseline and should not be overwritten.
+
+`cfstack-secure.yml` is the improved version used for agreed controls.
+
+Do not edit `cfstack-secure.yml` for shared network changes until the design is
+agreed by both sides.
+
+## Control Areas
+
+Each person should cover:
+
+1. Network controls.
+2. Instance controls.
+3. Server or OS controls.
+4. Data controls.
 
 ## Evidence Rule
 
-Evidence can be:
+Only claim a control is implemented when there is matching evidence. Good
+evidence can include:
 
-1. AWS output.
-2. Screenshots.
-3. Test results.
-4. CloudFormation changes.
+1. CloudFormation changes.
+2. AWS CLI output.
+3. AWS screenshots.
+4. Application screenshots.
+5. Test output.
 
-## Update Log
+If evidence is missing, write that the screenshot or test is still needed.
+Do not invent screenshots, AWS results, or security controls.
 
-| Date | Person | Update |
-|---|---|---|
-| 2026-05-17 | Pantelis | Added webserver hardening and health check work. |
-| 2026-05-19 | Mike | Added database evidence fixes. |
-| 2026-05-19 | Pantelis | Restricted MongoDB access to the webserver security group. |
-| 2026-05-20 | Pantelis | Added lab resource checker to avoid leaving AWS resources running. |
-| 2026-05-20 | Pantelis | Added agreed next target: private MongoDB subnet, NAT only for setup, VPN/SSM for admin, 402/S3 later. |
-| 2026-05-20 | Pantelis | Updated secure template so MongoDB uses a private subnet and NAT is used for outbound setup. |
+## Current Status
+
+The current security story is simple:
+
+1. The weak baseline has a public webserver and a public MongoDB server.
+2. The webserver may need public access, but MongoDB should not be public.
+3. `cfstack-secure.yml` already improves part of the webserver side.
+4. The main database treatment still needs to be proven with evidence before the
+   residual risk can be reduced.
+
+## Repo Rule
+
+GitHub should stay clean. Use GitHub for code, templates, scripts, `README.md`,
+and this ownership file. Working notes, evidence dumps, draft reports, and
+private coordination files should stay in the shared OneDrive folder.
+
