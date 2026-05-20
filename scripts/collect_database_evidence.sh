@@ -13,31 +13,50 @@ fi
 
 mkdir -p "$OUT_DIR"
 
-MONGO_IP="${MONGO_IP:-}"
+MONGO_PUBLIC_IP="${MONGO_PUBLIC_IP:-${MONGO_IP:-}}"
+MONGO_PRIVATE_IP="${MONGO_PRIVATE_IP:-}"
 
-if [[ -z "$MONGO_IP" ]]; then
-  MONGO_IP="$(aws cloudformation describe-stacks \
+if [[ -z "$MONGO_PUBLIC_IP" ]]; then
+  MONGO_PUBLIC_IP="$(aws cloudformation describe-stacks \
     --stack-name "$STACK_NAME" \
     --region "$REGION" \
     --query "Stacks[0].Outputs[?OutputKey=='MongoServerPublicIP'].OutputValue" \
-    --output text)"
+    --output text 2>/dev/null || true)"
 fi
 
-if [[ -z "$MONGO_IP" || "$MONGO_IP" == "None" ]]; then
-  echo "Could not find MongoServerPublicIP in stack outputs" >&2
-  echo "If CloudFormation read access is blocked, rerun with MONGO_IP set." >&2
-  exit 1
+if [[ -z "$MONGO_PRIVATE_IP" ]]; then
+  MONGO_PRIVATE_IP="$(aws cloudformation describe-stacks \
+    --stack-name "$STACK_NAME" \
+    --region "$REGION" \
+    --query "Stacks[0].Outputs[?OutputKey=='MongoServerPrivateIP'].OutputValue" \
+    --output text 2>/dev/null || true)"
+fi
+
+if [[ -z "$MONGO_PUBLIC_IP" || "$MONGO_PUBLIC_IP" == "None" ]]; then
+  MONGO_PUBLIC_IP="None"
+fi
+
+if [[ -z "$MONGO_PRIVATE_IP" || "$MONGO_PRIVATE_IP" == "None" ]]; then
+  MONGO_PRIVATE_IP="None"
 fi
 
 MONGO_INSTANCE_ID="${MONGO_INSTANCE_ID:-}"
 MONGO_SG_ID="${MONGO_SG_ID:-}"
 
 if [[ -z "$MONGO_INSTANCE_ID" ]]; then
-  MONGO_INSTANCE_ID="$(aws ec2 describe-instances \
-    --region "$REGION" \
-    --filters "Name=ip-address,Values=$MONGO_IP" \
-    --query "Reservations[0].Instances[0].InstanceId" \
-    --output text 2>/dev/null || true)"
+  if [[ "$MONGO_PUBLIC_IP" != "None" ]]; then
+    MONGO_INSTANCE_ID="$(aws ec2 describe-instances \
+      --region "$REGION" \
+      --filters "Name=ip-address,Values=$MONGO_PUBLIC_IP" \
+      --query "Reservations[0].Instances[0].InstanceId" \
+      --output text 2>/dev/null || true)"
+  elif [[ "$MONGO_PRIVATE_IP" != "None" ]]; then
+    MONGO_INSTANCE_ID="$(aws ec2 describe-instances \
+      --region "$REGION" \
+      --filters "Name=private-ip-address,Values=$MONGO_PRIVATE_IP" \
+      --query "Reservations[0].Instances[0].InstanceId" \
+      --output text 2>/dev/null || true)"
+  fi
 fi
 
 if [[ -n "$MONGO_INSTANCE_ID" && "$MONGO_INSTANCE_ID" != "None" && -z "$MONGO_SG_ID" ]]; then
@@ -48,7 +67,8 @@ if [[ -n "$MONGO_INSTANCE_ID" && "$MONGO_INSTANCE_ID" != "None" && -z "$MONGO_SG
     --output text 2>/dev/null || true)"
 fi
 
-echo "$MONGO_IP" > "$OUT_DIR/${TODAY}_mongodb_public_ip.txt"
+echo "$MONGO_PUBLIC_IP" > "$OUT_DIR/${TODAY}_mongodb_public_ip.txt"
+echo "$MONGO_PRIVATE_IP" > "$OUT_DIR/${TODAY}_mongodb_private_ip.txt"
 echo "$MONGO_INSTANCE_ID" > "$OUT_DIR/${TODAY}_mongodb_instance_id.txt"
 echo "$MONGO_SG_ID" > "$OUT_DIR/${TODAY}_mongodb_security_group_id.txt"
 
@@ -80,25 +100,30 @@ else
 fi
 
 if command -v mongosh >/dev/null 2>&1; then
-  PUBLIC_MONGO_URI="mongodb://${MONGO_IP}:27017/?serverSelectionTimeoutMS=5000"
+  if [[ "$MONGO_PUBLIC_IP" != "None" ]]; then
+    PUBLIC_MONGO_URI="mongodb://${MONGO_PUBLIC_IP}:27017/?serverSelectionTimeoutMS=5000"
 
-  if mongosh "$PUBLIC_MONGO_URI" --quiet --eval 'db.adminCommand({ping:1})' \
-    > "$OUT_DIR/${TODAY}_mongodb_public_access_check.txt" 2>&1; then
-    echo "CONNECTED - public MongoDB endpoint accepted a connection from this host." \
-      >> "$OUT_DIR/${TODAY}_mongodb_public_access_check.txt"
-  else
-    echo "BLOCKED - public MongoDB endpoint did not accept a connection from this host." \
-      >> "$OUT_DIR/${TODAY}_mongodb_public_access_check.txt"
-  fi
+    if mongosh "$PUBLIC_MONGO_URI" --quiet --eval 'db.adminCommand({ping:1})' \
+      > "$OUT_DIR/${TODAY}_mongodb_public_access_check.txt" 2>&1; then
+      echo "CONNECTED - public MongoDB endpoint accepted a connection from this host." \
+        >> "$OUT_DIR/${TODAY}_mongodb_public_access_check.txt"
+    else
+      echo "BLOCKED - public MongoDB endpoint did not accept a connection from this host." \
+        >> "$OUT_DIR/${TODAY}_mongodb_public_access_check.txt"
+    fi
 
-  if mongosh "$PUBLIC_MONGO_URI" --quiet --eval \
-    'const dbs=db.adminCommand({listDatabases:1}); printjson(dbs.databases.map(d => ({name:d.name,sizeOnDisk:d.sizeOnDisk}))); const auth=db.adminCommand({connectionStatus:1}); printjson({authenticatedUsers:auth.authInfo.authenticatedUsers}); const d=db.getSiblingDB("civicnexus"); printjson({urban:d.urban_environment_data.countDocuments(), personnel:d.personnel_data.countDocuments(), logs:d.system_operational_logs.countDocuments()});' \
-    > "$OUT_DIR/${TODAY}_mongodb_connection_check.txt" 2>&1; then
-    echo "CONNECTED - collection count check completed from this host." \
-      >> "$OUT_DIR/${TODAY}_mongodb_connection_check.txt"
+    if mongosh "$PUBLIC_MONGO_URI" --quiet --eval \
+      'const dbs=db.adminCommand({listDatabases:1}); printjson(dbs.databases.map(d => ({name:d.name,sizeOnDisk:d.sizeOnDisk}))); const auth=db.adminCommand({connectionStatus:1}); printjson({authenticatedUsers:auth.authInfo.authenticatedUsers}); const d=db.getSiblingDB("civicnexus"); printjson({urban:d.urban_environment_data.countDocuments(), personnel:d.personnel_data.countDocuments(), logs:d.system_operational_logs.countDocuments()});' \
+      > "$OUT_DIR/${TODAY}_mongodb_connection_check.txt" 2>&1; then
+      echo "CONNECTED - collection count check completed from this host." \
+        >> "$OUT_DIR/${TODAY}_mongodb_connection_check.txt"
+    else
+      echo "BLOCKED - collection count check could not run from this host because MongoDB public access is blocked." \
+        >> "$OUT_DIR/${TODAY}_mongodb_connection_check.txt"
+    fi
   else
-    echo "BLOCKED - collection count check could not run from this host because MongoDB public access is blocked." \
-      >> "$OUT_DIR/${TODAY}_mongodb_connection_check.txt"
+    echo "PASS - MongoDB has no public IP output to test." > "$OUT_DIR/${TODAY}_mongodb_public_access_check.txt"
+    echo "SKIPPED - collection count check cannot run from this host without a public MongoDB endpoint." > "$OUT_DIR/${TODAY}_mongodb_connection_check.txt"
   fi
 else
   echo "mongosh not installed, public access check skipped." > "$OUT_DIR/${TODAY}_mongodb_public_access_check.txt"
@@ -117,26 +142,33 @@ $STACK_NAME
 MongoDB public IP:
 
 \`\`\`text
-$MONGO_IP
+$MONGO_PUBLIC_IP
+\`\`\`
+
+MongoDB private IP:
+
+\`\`\`text
+$MONGO_PRIVATE_IP
 \`\`\`
 
 Files collected:
 
 1. ${TODAY}_mongodb_public_ip.txt
-2. ${TODAY}_mongodb_instance_id.txt
-3. ${TODAY}_mongodb_security_group_id.txt
-4. ${TODAY}_mongodb_instance_details.json
-5. ${TODAY}_mongodb_sg_rules.json
-6. ${TODAY}_mongodb_sg_inbound_summary.txt
-7. ${TODAY}_mongodb_public_access_check.txt
-8. ${TODAY}_mongodb_connection_check.txt
+2. ${TODAY}_mongodb_private_ip.txt
+3. ${TODAY}_mongodb_instance_id.txt
+4. ${TODAY}_mongodb_security_group_id.txt
+5. ${TODAY}_mongodb_instance_details.json
+6. ${TODAY}_mongodb_sg_rules.json
+7. ${TODAY}_mongodb_sg_inbound_summary.txt
+8. ${TODAY}_mongodb_public_access_check.txt
+9. ${TODAY}_mongodb_connection_check.txt
 
 What this supports:
 
-1. MongoDB has a public IP.
+1. Whether MongoDB has a public IP or is private-only.
 2. MongoDB security group rules can be checked from AWS evidence.
 3. The public MongoDB endpoint can be tested from outside the VPC.
-4. For the secure stack, public access should be blocked by the security group.
+4. For the secure stack, public access should be blocked or there should be no public IP.
 5. The connection output shows whether the current session has authenticated users when a connection is allowed.
 EOF
 

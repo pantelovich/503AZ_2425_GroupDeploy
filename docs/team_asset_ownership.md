@@ -20,6 +20,15 @@ Last updated: 2026-05-20
 
 We only claim controls when we have evidence.
 
+Next target:
+
+1. Keep the web/app layer public.
+2. Move MongoDB into a private subnet with no public IP.
+3. Use NAT only if the private instance needs outbound setup access.
+4. Use VPN/SSM for admin access where possible, not public SSH.
+5. Keep MongoDB open only to the web/app security group.
+6. Treat the 402/S3 frontend as an extra after the secure stack works.
+
 ## Current Work
 
 Pantelis:
@@ -59,3 +68,4 @@ Evidence can be:
 | 2026-05-19 | Mike | Added database evidence fixes. |
 | 2026-05-19 | Pantelis | Restricted MongoDB access to the webserver security group. |
 | 2026-05-20 | Pantelis | Added lab resource checker to avoid leaving AWS resources running. |
+| 2026-05-20 | Pantelis | Added agreed next target: private MongoDB subnet, NAT only for setup, VPN/SSM for admin, 402/S3 later. |
