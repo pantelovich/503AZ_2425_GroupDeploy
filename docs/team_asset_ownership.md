@@ -2,7 +2,7 @@
 
 This file records who is responsible for each part of the CivicNexus security work.
 
-Last updated: 2026-05-17
+Last updated: 2026-05-20
 
 ## Ownership
 
@@ -52,6 +52,29 @@ Shared decisions still need agreement before implementation:
 2. Whether MongoDB moves to a private subnet.
 3. Whether dashboard personnel data is hidden, authenticated, or documented as demo exposure.
 4. Final residual risk scores.
+
+## Next Pantelis Work
+
+Pantelis should focus on webserver and application proof:
+
+1. Test the secure stack after each database-side change.
+2. Update the PHP MongoDB connection if Mike adds authentication or changes connection details.
+3. Re-check `/health.php` and confirm it reports the database as reachable.
+4. Re-capture web evidence: dashboard screenshot, health output, HTTP headers, IMDSv2 setting, and web-to-database security group relationship.
+5. Add the final web/app control explanation to the coursework report using evidence from OneDrive.
+6. Check lab resources are deleted after evidence is saved.
+
+## Next Mike Work
+
+Mike should focus on database security proof:
+
+1. Add MongoDB authentication to the secure stack.
+2. Tell Pantelis the exact connection detail change needed for the PHP app.
+3. Prove unauthenticated MongoDB access fails.
+4. Prove the web app still connects using the approved authenticated path.
+5. Add backup and restore evidence for MongoDB.
+6. Add any database monitoring or log evidence that is realistic for the lab.
+7. Update this file after each small milestone and push so Pantelis can see it.
 
 ## Evidence Rule
 
