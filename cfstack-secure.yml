@@ -246,10 +246,8 @@ Resources:
           # Start and enable MongoDB
           systemctl start mongod
           systemctl enable mongod
-          # Listen only on localhost and the private VPC address
-          TOKEN=$(curl -sS -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-          MONGO_PRIVATE_IP=$(curl -sS -H "X-aws-ec2-metadata-token: $TOKEN" "http://169.254.169.254/latest/meta-data/local-ipv4")
-          sed -i "s/^  bindIp:.*/  bindIp: 127.0.0.1,$MONGO_PRIVATE_IP/" /etc/mongod.conf
+          # Listen for VPC clients that are allowed by the security group
+          sed -i 's/bindIp: 127.0.0.1/bindIp: 0.0.0.0/g' /etc/mongod.conf
           systemctl restart mongod
 
           # Wait for MongoDB before loading local demo data
