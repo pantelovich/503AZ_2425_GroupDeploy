@@ -14,6 +14,7 @@ The project keeps the weak baseline and the improved secure version separate so 
 | `scripts/update_lab_credentials.sh` | Updates local AWS CLI and GitHub Actions secrets from the Learner Lab credentials block. |
 | `scripts/collect_webserver_evidence.sh` | Collects webserver, dashboard, header, health check, and security group evidence. |
 | `scripts/collect_database_evidence.sh` | Collects MongoDB instance, security group, and access evidence. |
+| `scripts/collect_network_audit_evidence.sh` | Collects CloudFormation, CloudTrail, and VPC Flow Log evidence. |
 | `scripts/list_lab_resources.sh` | Lists active AWS lab resources so unused stacks can be deleted before they waste credit. |
 | `docs/team_asset_ownership.md` | Records who worked on which asset and what changed. |
 
@@ -57,6 +58,7 @@ After deployment, collect evidence with:
 ```bash
 scripts/collect_webserver_evidence.sh <stack-name> <output-folder>
 scripts/collect_database_evidence.sh <stack-name> <output-folder>
+scripts/collect_network_audit_evidence.sh <stack-name> <output-folder>
 ```
 
 Do not commit evidence dumps, screenshots, credentials, or private keys to this repository.
