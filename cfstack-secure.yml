@@ -46,14 +46,9 @@ Parameters:
     NoEcho: true
     MinLength: 32
     AllowedPattern: '^[A-Za-z0-9]{32,128}$'
-  LambdaRoleArn:
-    Type: String
-    Description: Existing IAM role ARN for the Lambda test. Leave blank to use the AWS Academy LabRole.
-    Default: ''
 
 Conditions:
   CreateVDI: !Equals [!Ref GroupSize, 3]
-  UseProvidedLambdaRole: !Not [!Equals [!Ref LambdaRoleArn, '']]
 
 Resources:
   # ------------------------------------------------------------#
@@ -438,26 +433,6 @@ Resources:
       FromPort: 22
       ToPort: 22
       SourceSecurityGroupId: !Ref OpenVPNSecurityGroup
-
-  LambdaSecurityGroup:
-    Type: 'AWS::EC2::SecurityGroup'
-    Properties:
-      GroupDescription: 'Allows Lambda test traffic to private MongoDB'
-      VpcId: !Ref VPC
-      Tags:
-        - Key: Name
-          Value: !Sub 'civicnexus-lambda-sg-${GroupName}'
-        - Key: GroupName
-          Value: !Ref GroupName
-
-  MongoIngressFromLambda:
-    Type: 'AWS::EC2::SecurityGroupIngress'
-    Properties:
-      GroupId: !Ref MongoSecurityGroup
-      IpProtocol: tcp
-      FromPort: 27017
-      ToPort: 27017
-      SourceSecurityGroupId: !Ref LambdaSecurityGroup
 
   MongoEC2Instance:
     Type: 'AWS::EC2::Instance'
@@ -1016,124 +991,6 @@ Resources:
           Value: !Ref GroupName
 
   # ------------------------------------------------------------#
-  # 402-style Lambda test for private MongoDB
-  # ------------------------------------------------------------#
-  MongoHealthLambda:
-    Type: 'AWS::Lambda::Function'
-    DependsOn:
-      - MongoEC2Instance
-      - MongoReplicaInstance2
-      - MongoReplicaInstance3
-      - MongoIngressFromLambda
-    Properties:
-      FunctionName: !Sub 'civicnexus-mongo-test-${GroupName}'
-      Runtime: nodejs22.x
-      Handler: index.handler
-      Role: !If
-        - UseProvidedLambdaRole
-        - !Ref LambdaRoleArn
-        - !Sub 'arn:aws:iam::${AWS::AccountId}:role/LabRole'
-      Timeout: 10
-      MemorySize: 128
-      VpcConfig:
-        SecurityGroupIds:
-          - !Ref LambdaSecurityGroup
-        SubnetIds:
-          - !Ref PrivateSubnet1
-          - !Ref PrivateSubnet2
-      Environment:
-        Variables:
-          MONGO_HOSTS: !Sub '${MongoEC2Instance.PrivateIp}:27017,${MongoReplicaInstance2.PrivateIp}:27017,${MongoReplicaInstance3.PrivateIp}:27017'
-      Code:
-        ZipFile: |
-          const net = require('net');
-
-          function checkHost(target) {
-            const [host, portText] = target.split(':');
-            const port = Number(portText || 27017);
-
-            return new Promise((resolve) => {
-              const socket = net.createConnection({ host, port, timeout: 2000 });
-
-              socket.on('connect', () => {
-                socket.destroy();
-                resolve({ host, port, reachable: true });
-              });
-
-              socket.on('timeout', () => {
-                socket.destroy();
-                resolve({ host, port, reachable: false, error: 'timeout' });
-              });
-
-              socket.on('error', (error) => {
-                resolve({ host, port, reachable: false, error: error.code || error.message });
-              });
-            });
-          }
-
-          exports.handler = async () => {
-            const hosts = (process.env.MONGO_HOSTS || '')
-              .split(',')
-              .map((item) => item.trim())
-              .filter(Boolean);
-
-            const checks = await Promise.all(hosts.map(checkHost));
-            const ok = checks.length > 0 && checks.every((item) => item.reachable);
-
-            return {
-              statusCode: ok ? 200 : 503,
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({
-                service: 'civicnexus-lambda-mongo-test',
-                ok,
-                note: 'This Lambda runs inside the VPC and checks private MongoDB replica set access.',
-                checks
-              })
-            };
-          };
-      Tags:
-        - Key: Name
-          Value: !Sub 'civicnexus-mongo-test-lambda-${GroupName}'
-        - Key: GroupName
-          Value: !Ref GroupName
-
-  CivicNexusHttpApi:
-    Type: 'AWS::ApiGatewayV2::Api'
-    Properties:
-      Name: !Sub 'civicnexus-api-${GroupName}'
-      ProtocolType: HTTP
-
-  MongoHealthIntegration:
-    Type: 'AWS::ApiGatewayV2::Integration'
-    Properties:
-      ApiId: !Ref CivicNexusHttpApi
-      IntegrationType: AWS_PROXY
-      IntegrationUri: !GetAtt MongoHealthLambda.Arn
-      PayloadFormatVersion: '2.0'
-
-  MongoHealthRoute:
-    Type: 'AWS::ApiGatewayV2::Route'
-    Properties:
-      ApiId: !Ref CivicNexusHttpApi
-      RouteKey: 'GET /mongo-test'
-      Target: !Sub 'integrations/${MongoHealthIntegration}'
-
-  MongoHealthStage:
-    Type: 'AWS::ApiGatewayV2::Stage'
-    Properties:
-      ApiId: !Ref CivicNexusHttpApi
-      StageName: '$default'
-      AutoDeploy: true
-
-  MongoHealthLambdaPermission:
-    Type: 'AWS::Lambda::Permission'
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !Ref MongoHealthLambda
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${CivicNexusHttpApi}/*/*/mongo-test'
-
-  # ------------------------------------------------------------#
   # Asset 3: VDI Instance (Student 3 - Conditional)
   # ------------------------------------------------------------#
   VDISecurityGroup:
@@ -1206,12 +1063,6 @@ Outputs:
   OpenVPNClientConfigPath:
     Description: 'Client profile path on the OpenVPN server'
     Value: '/home/ec2-user/civicnexus-vpn.ovpn'
-  LambdaMongoTestURL:
-    Description: 'API Gateway URL for the Lambda private MongoDB network test'
-    Value: !Sub 'https://${CivicNexusHttpApi}.execute-api.${AWS::Region}.amazonaws.com/mongo-test'
-  LambdaMongoTarget:
-    Description: 'Private MongoDB replica hosts checked by the Lambda function'
-    Value: !Sub '${MongoEC2Instance.PrivateIp}:27017,${MongoReplicaInstance2.PrivateIp}:27017,${MongoReplicaInstance3.PrivateIp}:27017'
   VDIInstanceId:
     Description: 'Instance ID of the VDI instance (if created)'
     Condition: CreateVDI
