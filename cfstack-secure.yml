@@ -257,14 +257,17 @@ Resources:
     DependsOn: DefaultPublicRoute
     Properties:
       InstanceType: t2.micro
-      SubnetId: !Ref PublicSubnet2
       KeyName: !Ref KeyName
       SourceDestCheck: false
       MetadataOptions:
         HttpTokens: required
         HttpEndpoint: enabled
-      SecurityGroupIds:
-        - !Ref OpenVPNSecurityGroup
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeviceIndex: 0
+          SubnetId: !Ref PublicSubnet2
+          GroupSet:
+            - !Ref OpenVPNSecurityGroup
       ImageId: ami-00ca32bbc84273381 # Amazon Linux 2023
       UserData:
         Fn::Base64: !Sub |
@@ -762,13 +765,16 @@ Resources:
     Type: 'AWS::EC2::Instance'
     Properties:
       InstanceType: t2.micro
-      SubnetId: !Ref PublicSubnet1
       KeyName: !Ref KeyName
       MetadataOptions:
         HttpTokens: required
         HttpEndpoint: enabled
-      SecurityGroupIds:
-        - !Ref WebServerSecurityGroup
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeviceIndex: 0
+          SubnetId: !Ref PublicSubnet1
+          GroupSet:
+            - !Ref WebServerSecurityGroup
       ImageId: ami-00ca32bbc84273381 # Amazon Linux 2023
       UserData:
         Fn::Base64: !Sub |
@@ -1011,9 +1017,12 @@ Resources:
       InstanceType: t3.medium
       ImageId: ami-0efee5160a1079475 # Windows Server 2025 Base
       KeyName: !Ref KeyName
-      SubnetId: !Ref PublicSubnet1 # Insecurely placed in a public subnet for easy access
-      SecurityGroupIds:
-        - !Ref VDISecurityGroup
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeviceIndex: 0
+          SubnetId: !Ref PublicSubnet1 # Insecurely placed in a public subnet for easy access
+          GroupSet:
+            - !Ref VDISecurityGroup
       Tags:
         - Key: Name
           Value: !Sub 'civicnexus-vdi-instance-${GroupName}'
