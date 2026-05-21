@@ -149,7 +149,7 @@ Resources:
       SubnetId: !Ref PrivateSubnet2
 
   # ------------------------------------------------------------#
-  # Asset 2: MongoDB EC2 Instance (Student 2)
+  # Asset 2: MongoDB EC2 Database (Mike)
   # ------------------------------------------------------------#
   MongoSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
@@ -200,7 +200,7 @@ Resources:
           Value: !Ref GroupName
           
   # ------------------------------------------------------------#
-  # Asset 1: Public Web Server (Student 1)
+  # Asset 1: Public Web Server and PHP Dashboard (Pantelis)
   # ------------------------------------------------------------#
   WebServerSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
@@ -386,7 +386,7 @@ Resources:
           Value: !Ref GroupName
 
   # ------------------------------------------------------------#
-  # Asset 3: VDI Instance (Student 3 - Conditional)
+  # Optional VDI Instance (not used in the Pantelis/Mike two-person build)
   # ------------------------------------------------------------#
   VDISecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
@@ -432,6 +432,5 @@ Outputs:
     Description: 'Instance ID of the VDI instance (if created)'
     Condition: CreateVDI
     Value: !Ref VDIInstance
-
 
 
