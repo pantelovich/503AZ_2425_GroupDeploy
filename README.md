@@ -32,6 +32,7 @@ The secure stack currently focuses on:
 - NAT Gateway for private subnet outbound setup access
 - local database seeding during secure stack bootstrap
 - MongoDB backup and restore check, with backup output stored in an encrypted S3 bucket
+- VPC Flow Logs to CloudWatch Logs for accepted and rejected traffic evidence
 
 ## Deploy
 

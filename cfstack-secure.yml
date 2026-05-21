@@ -200,6 +200,60 @@ Resources:
       RouteTableId: !Ref PrivateRouteTable
       SubnetId: !Ref PrivateSubnet2
 
+  VpcFlowLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-vpc-flow-logs-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  VpcFlowLogsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: vpc-flow-logs.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WriteVpcFlowLogs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub '${VpcFlowLogGroup.Arn}:*'
+      Tags:
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  VpcFlowLog:
+    Type: AWS::EC2::FlowLog
+    Properties:
+      DeliverLogsPermissionArn: !GetAtt VpcFlowLogsRole.Arn
+      LogDestinationType: cloud-watch-logs
+      LogGroupName: !Ref VpcFlowLogGroup
+      ResourceId: !Ref VPC
+      ResourceType: VPC
+      TrafficType: ALL
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-vpc-flow-log-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
   MongoBackupBucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
@@ -779,6 +833,12 @@ Outputs:
   MongoBackupBucketName:
     Description: 'Encrypted S3 bucket used for MongoDB backup and restore evidence'
     Value: !Ref MongoBackupBucket
+  VpcFlowLogGroupName:
+    Description: 'CloudWatch Logs group used by VPC Flow Logs'
+    Value: !Ref VpcFlowLogGroup
+  VpcFlowLogId:
+    Description: 'VPC Flow Log resource used for accepted and rejected traffic evidence'
+    Value: !Ref VpcFlowLog
   VDIInstanceId:
     Description: 'Instance ID of the VDI instance (if created)'
     Condition: CreateVDI
