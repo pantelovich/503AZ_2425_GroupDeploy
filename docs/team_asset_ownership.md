@@ -77,3 +77,4 @@ Evidence can be:
 | 2026-05-21 | Pantelis | Tightened MongoDB so it listens only on localhost and its private VPC IP. |
 | 2026-05-21 | Pantelis | Added MongoDB backup and restore evidence support for availability. |
 | 2026-05-21 | Pantelis | Added VPC Flow Logs support for network monitoring evidence. |
+| 2026-05-21 | Pantelis | Added network and audit evidence helper for Flow Logs and CloudTrail. |
