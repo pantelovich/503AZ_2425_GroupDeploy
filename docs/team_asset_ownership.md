@@ -2,14 +2,14 @@
 
 Short note on who covered what.
 
-Last updated: 2026-05-21
+Last updated: 2026-05-22
 
 ## Ownership
 
 | Person | Area | Work |
 |---|---|---|
 | Pantelis | Webserver and PHP dashboard | Webserver hardening, dashboard behaviour, health check, web evidence |
-| Mike | MongoDB database | Database exposure, access control, backup and database evidence |
+| Mike | MongoDB database | Database exposure, access control, replica set, backup and database evidence |
 | Both | Network and final testing | Security group links, integration checks, final evidence |
 
 ## Notes
@@ -26,8 +26,9 @@ Current secure target:
 2. Keep MongoDB in a private subnet with no public IP.
 3. Use NAT only if the private instance needs outbound setup access.
 4. Use VPN/SSM for admin access where possible, not public SSH.
-5. Keep MongoDB open only to the web/app security group.
-6. Treat the 402/S3 frontend as an extra after the secure stack works.
+5. Keep MongoDB open only to the web/app security group and replica members.
+6. Run MongoDB as a private replica set only if the final deploy proves it works.
+7. Treat the 402/S3 frontend as an extra after the secure stack works.
 
 ## Current Work
 
@@ -42,8 +43,9 @@ Mike:
 
 1. MongoDB access controls.
 2. MongoDB authentication.
-3. Backup and restore evidence.
-4. Database evidence.
+3. Private MongoDB replica set.
+4. Backup and restore evidence.
+5. Database evidence.
 
 Shared:
 
@@ -74,3 +76,5 @@ Evidence can be:
 | 2026-05-21 | Pantelis | Added MongoDB backup and restore evidence support for availability. |
 | 2026-05-21 | Pantelis | Added VPC Flow Logs support for network monitoring evidence. |
 | 2026-05-21 | Pantelis | Added network and audit evidence helper for Flow Logs and CloudTrail. |
+| 2026-05-22 | Pantelis / Mike | Brought in the useful MongoDB replica set work on a clean branch, without OpenVPN. |
+| 2026-05-22 | Pantelis | Disabled optional VDI by default and removed public RDP from the secure template. |

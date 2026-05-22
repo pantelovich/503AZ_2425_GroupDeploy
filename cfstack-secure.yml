@@ -10,6 +10,11 @@ Parameters:
     Description: The number of students in the group.
     Default: 2
     AllowedValues: [2, 3]
+  EnableVDI:
+    Type: String
+    Description: Set to true only if the optional third VDI asset is required.
+    Default: 'false'
+    AllowedValues: ['true', 'false']
   KeyName:
     Type: 'AWS::EC2::KeyPair::KeyName'
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instances.
@@ -35,9 +40,17 @@ Parameters:
     NoEcho: true
     MinLength: 12
     AllowedPattern: '^[A-Za-z0-9_]{12,64}$'
+  MongoReplicaKey:
+    Type: String
+    Description: Shared key used by MongoDB replica set members. Use letters and numbers only.
+    NoEcho: true
+    MinLength: 32
+    AllowedPattern: '^[A-Za-z0-9]{32,128}$'
 
 Conditions:
-  CreateVDI: !Equals [!Ref GroupSize, 3]
+  CreateVDI: !And
+    - !Equals [!Ref GroupSize, 3]
+    - !Equals [!Ref EnableVDI, 'true']
 
 Resources:
   # ------------------------------------------------------------#
@@ -115,6 +128,18 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub 'civicnexus-private-subnet-2-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  PrivateSubnet3:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.12.0/24
+      AvailabilityZone: !Select [2, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-private-subnet-3-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
   
@@ -199,6 +224,12 @@ Resources:
     Properties:
       RouteTableId: !Ref PrivateRouteTable
       SubnetId: !Ref PrivateSubnet2
+
+  PrivateSubnet3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet3
 
   VpcFlowLogGroup:
     Type: AWS::Logs::LogGroup
@@ -319,25 +350,43 @@ Resources:
   MongoSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
-      GroupDescription: 'Allows MongoDB only from the webserver security group'
+      GroupDescription: 'Allows MongoDB only from approved internal security groups'
       VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 27017
-          ToPort: 27017
-          SourceSecurityGroupId: !Ref WebServerSecurityGroup
       Tags:
         - Key: Name
           Value: !Sub 'civicnexus-mongodb-sg-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
+  MongoIngressFromWebServer:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref MongoSecurityGroup
+      IpProtocol: tcp
+      FromPort: 27017
+      ToPort: 27017
+      SourceSecurityGroupId: !Ref WebServerSecurityGroup
+
+  MongoIngressFromReplicaMembers:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref MongoSecurityGroup
+      IpProtocol: tcp
+      FromPort: 27017
+      ToPort: 27017
+      SourceSecurityGroupId: !Ref MongoSecurityGroup
+
   MongoEC2Instance:
     Type: 'AWS::EC2::Instance'
-    DependsOn: PrivateDefaultRoute
+    DependsOn:
+      - PrivateDefaultRoute
+      - MongoIngressFromReplicaMembers
+      - MongoReplicaInstance2
+      - MongoReplicaInstance3
     Properties:
       InstanceType: t3.small
       SubnetId: !Ref PrivateSubnet1
+      PrivateIpAddress: 10.0.10.10
       KeyName: !Ref KeyName
       IamInstanceProfile: !Ref MongoBackupInstanceProfile
       MetadataOptions:
@@ -349,25 +398,39 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
-          # Install MongoDB for smart city operational data
-          echo "[mongodb-org-7.0]" >> /etc/yum.repos.d/mongodb-org-7.0.repo
-          echo "name=MongoDB Repository" >> /etc/yum.repos.d/mongodb-org-7.0.repo
-          echo "baseurl=https://repo.mongodb.org/yum/amazon/2023/mongodb-org/7.0/x86_64/" >> /etc/yum.repos.d/mongodb-org-7.0.repo
-          echo "gpgcheck=1" >> /etc/yum.repos.d/mongodb-org-7.0.repo
-          echo "enabled=1" >> /etc/yum.repos.d/mongodb-org-7.0.repo
-          echo "gpgkey=https://www.mongodb.org/static/pgp/server-7.0.asc" >> /etc/yum.repos.d/mongodb-org-7.0.repo
+          set -xe
+
+          cat <<'EOF' > /etc/yum.repos.d/mongodb-org-7.0.repo
+          [mongodb-org-7.0]
+          name=MongoDB Repository
+          baseurl=https://repo.mongodb.org/yum/amazon/2023/mongodb-org/7.0/x86_64/
+          gpgcheck=1
+          enabled=1
+          gpgkey=https://www.mongodb.org/static/pgp/server-7.0.asc
+          EOF
           dnf install -y mongodb-org
           dnf install -y awscli || true
-          # Start and enable MongoDB
-          systemctl start mongod
-          systemctl enable mongod
-          # Listen only on localhost and the private VPC address
-          TOKEN=$(curl -sS -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-          PRIVATE_IP=$(curl -sS -H "X-aws-ec2-metadata-token: $TOKEN" "http://169.254.169.254/latest/meta-data/local-ipv4")
-          sed -i "s/bindIp: 127.0.0.1/bindIp: 127.0.0.1,$PRIVATE_IP/g" /etc/mongod.conf
-          systemctl restart mongod
 
-          # Wait for MongoDB before loading local demo data
+          cat <<'EOF' > /etc/mongo-keyfile
+          ${MongoReplicaKey}
+          EOF
+          chmod 400 /etc/mongo-keyfile
+          chown mongod:mongod /etc/mongo-keyfile
+
+          sed -i 's/bindIp: 127.0.0.1/bindIp: 127.0.0.1,10.0.10.10/g' /etc/mongod.conf
+          cat <<'EOF' >> /etc/mongod.conf
+
+          replication:
+            replSetName: rs0
+
+          security:
+            authorization: enabled
+            keyFile: /etc/mongo-keyfile
+          EOF
+
+          systemctl enable mongod
+          systemctl start mongod
+
           for attempt in {1..30}; do
             if mongosh mongodb://127.0.0.1:27017 --quiet --eval 'db.adminCommand({ping:1})' >/dev/null 2>&1; then
               break
@@ -375,9 +438,44 @@ Resources:
             sleep 5
           done
 
-          # Seed demo data locally because MongoDB is not publicly reachable
+          for attempt in {1..30}; do
+            if timeout 2 bash -c "</dev/tcp/10.0.11.10/27017" >/dev/null 2>&1 && timeout 2 bash -c "</dev/tcp/10.0.12.10/27017" >/dev/null 2>&1; then
+              break
+            fi
+            sleep 5
+          done
+
+          mongosh mongodb://127.0.0.1:27017/admin --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"10.0.10.10:27017",priority:2},{_id:1,host:"10.0.11.10:27017"},{_id:2,host:"10.0.12.10:27017"}]})' || true
+
+          for attempt in {1..30}; do
+            if mongosh mongodb://127.0.0.1:27017/admin --quiet --eval 'db.hello().isWritablePrimary' | grep -q true; then
+              break
+            fi
+            sleep 5
+          done
+
+          cat <<'EOF' > /tmp/create_admin.js
+          db = db.getSiblingDB('admin');
+          db.createUser({
+              user: "${MongoAdminUsername}",
+              pwd: "${MongoAdminPassword}",
+              roles: [ { role: "root", db: "admin" } ]
+          });
+          print("MongoDB admin user created.");
+          EOF
+          mongosh mongodb://127.0.0.1:27017/admin /tmp/create_admin.js || true
+          rm -f /tmp/create_admin.js
+
           cat <<'EOF' > /tmp/seed_civicnexus.js
           db = db.getSiblingDB('civicnexus');
+
+          if (!db.getUser("${MongoAppUsername}")) {
+              db.createUser({
+                  user: "${MongoAppUsername}",
+                  pwd: "${MongoAppPassword}",
+                  roles: [ { role: "readWrite", db: "civicnexus" } ]
+              });
+          }
 
           db.urban_environment_data.drop();
           db.personnel_data.drop();
@@ -466,49 +564,15 @@ Resources:
 
           print("CivicNexus database populated successfully.");
           EOF
-          mongosh mongodb://127.0.0.1:27017 /tmp/seed_civicnexus.js
+          mongosh -u "${MongoAdminUsername}" -p "${MongoAdminPassword}" --authenticationDatabase admin "mongodb://10.0.10.10:27017,10.0.11.10:27017,10.0.12.10:27017/civicnexus?replicaSet=rs0" /tmp/seed_civicnexus.js
           rm -f /tmp/seed_civicnexus.js
 
-          # Create database users before enabling access control
-          cat <<'EOF' > /tmp/create_mongo_users.js
-          db = db.getSiblingDB('admin');
-          db.createUser({
-              user: "${MongoAdminUsername}",
-              pwd: "${MongoAdminPassword}",
-              roles: [ { role: "root", db: "admin" } ]
-          });
-
-          db = db.getSiblingDB('civicnexus');
-          db.createUser({
-              user: "${MongoAppUsername}",
-              pwd: "${MongoAppPassword}",
-              roles: [ { role: "readWrite", db: "civicnexus" } ]
-          });
-
-          print("MongoDB users created successfully.");
-          EOF
-          mongosh mongodb://127.0.0.1:27017 /tmp/create_mongo_users.js
-          rm -f /tmp/create_mongo_users.js
-
-          # Enable MongoDB authentication after users are created
-          cat <<'EOF' >> /etc/mongod.conf
-
-          security:
-            authorization: enabled
-          EOF
-          systemctl restart mongod
-
-          for attempt in {1..30}; do
-            if mongosh "mongodb://${MongoAppUsername}:${MongoAppPassword}@127.0.0.1:27017/civicnexus?authSource=civicnexus" --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; then
-              break
-            fi
-            sleep 5
-          done
+          mongosh -u "${MongoAppUsername}" -p "${MongoAppPassword}" --authenticationDatabase civicnexus "mongodb://10.0.10.10:27017,10.0.11.10:27017,10.0.12.10:27017/civicnexus?replicaSet=rs0" --quiet --eval 'db.runCommand({connectionStatus:1})'
 
           BACKUP_BUCKET="${MongoBackupBucket}"
           BACKUP_FILE="/tmp/civicnexus-initial-backup.archive"
           BACKUP_LOG="/var/log/civicnexus-backup-restore.log"
-          BACKUP_URI="mongodb://${MongoAdminUsername}:${MongoAdminPassword}@127.0.0.1:27017/admin?authSource=admin"
+          BACKUP_URI="mongodb://${MongoAdminUsername}:${MongoAdminPassword}@10.0.10.10:27017,10.0.11.10:27017,10.0.12.10:27017/admin?authSource=admin&replicaSet=rs0"
 
           {
             echo "CivicNexus MongoDB backup and restore check"
@@ -526,7 +590,119 @@ Resources:
           fi
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-mongodb-instance-${GroupName}'
+          Value: !Sub 'civicnexus-mongodb-1-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  MongoReplicaInstance2:
+    Type: 'AWS::EC2::Instance'
+    DependsOn:
+      - PrivateDefaultRoute
+      - MongoIngressFromReplicaMembers
+    Properties:
+      InstanceType: t3.small
+      SubnetId: !Ref PrivateSubnet2
+      PrivateIpAddress: 10.0.11.10
+      KeyName: !Ref KeyName
+      MetadataOptions:
+        HttpTokens: required
+        HttpEndpoint: enabled
+      SecurityGroupIds:
+        - !Ref MongoSecurityGroup
+      ImageId: ami-00ca32bbc84273381 # Amazon Linux 2023
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -xe
+
+          cat <<'EOF' > /etc/yum.repos.d/mongodb-org-7.0.repo
+          [mongodb-org-7.0]
+          name=MongoDB Repository
+          baseurl=https://repo.mongodb.org/yum/amazon/2023/mongodb-org/7.0/x86_64/
+          gpgcheck=1
+          enabled=1
+          gpgkey=https://www.mongodb.org/static/pgp/server-7.0.asc
+          EOF
+          dnf install -y mongodb-org
+
+          cat <<'EOF' > /etc/mongo-keyfile
+          ${MongoReplicaKey}
+          EOF
+          chmod 400 /etc/mongo-keyfile
+          chown mongod:mongod /etc/mongo-keyfile
+
+          sed -i 's/bindIp: 127.0.0.1/bindIp: 127.0.0.1,10.0.11.10/g' /etc/mongod.conf
+          cat <<'EOF' >> /etc/mongod.conf
+
+          replication:
+            replSetName: rs0
+
+          security:
+            authorization: enabled
+            keyFile: /etc/mongo-keyfile
+          EOF
+
+          systemctl enable mongod
+          systemctl start mongod
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-mongodb-2-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  MongoReplicaInstance3:
+    Type: 'AWS::EC2::Instance'
+    DependsOn:
+      - PrivateDefaultRoute
+      - MongoIngressFromReplicaMembers
+    Properties:
+      InstanceType: t3.small
+      SubnetId: !Ref PrivateSubnet3
+      PrivateIpAddress: 10.0.12.10
+      KeyName: !Ref KeyName
+      MetadataOptions:
+        HttpTokens: required
+        HttpEndpoint: enabled
+      SecurityGroupIds:
+        - !Ref MongoSecurityGroup
+      ImageId: ami-00ca32bbc84273381 # Amazon Linux 2023
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -xe
+
+          cat <<'EOF' > /etc/yum.repos.d/mongodb-org-7.0.repo
+          [mongodb-org-7.0]
+          name=MongoDB Repository
+          baseurl=https://repo.mongodb.org/yum/amazon/2023/mongodb-org/7.0/x86_64/
+          gpgcheck=1
+          enabled=1
+          gpgkey=https://www.mongodb.org/static/pgp/server-7.0.asc
+          EOF
+          dnf install -y mongodb-org
+
+          cat <<'EOF' > /etc/mongo-keyfile
+          ${MongoReplicaKey}
+          EOF
+          chmod 400 /etc/mongo-keyfile
+          chown mongod:mongod /etc/mongo-keyfile
+
+          sed -i 's/bindIp: 127.0.0.1/bindIp: 127.0.0.1,10.0.12.10/g' /etc/mongod.conf
+          cat <<'EOF' >> /etc/mongod.conf
+
+          replication:
+            replSetName: rs0
+
+          security:
+            authorization: enabled
+            keyFile: /etc/mongo-keyfile
+          EOF
+
+          systemctl enable mongod
+          systemctl start mongod
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-mongodb-3-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
           
@@ -626,10 +802,10 @@ Resources:
           ini_set('log_errors', 1);
           error_reporting(E_ALL);
 
-          $mongoIp = "${MongoEC2Instance.PrivateIp}";
+          $mongoHosts = "${MongoEC2Instance.PrivateIp}:27017,${MongoReplicaInstance2.PrivateIp}:27017,${MongoReplicaInstance3.PrivateIp}:27017";
           $mongoUser = "${MongoAppUsername}";
           $mongoPassword = "${MongoAppPassword}";
-          $uri = "mongodb://" . rawurlencode($mongoUser) . ":" . rawurlencode($mongoPassword) . "@$mongoIp:27017/civicnexus?authSource=civicnexus";
+          $uri = "mongodb://" . rawurlencode($mongoUser) . ":" . rawurlencode($mongoPassword) . "@$mongoHosts/civicnexus?authSource=civicnexus&replicaSet=rs0";
         
           try {
               require '/var/www/html/vendor/autoload.php';
@@ -722,10 +898,10 @@ Resources:
           ini_set('log_errors', 1);
           header('Content-Type: application/json');
 
-          $mongoIp = "${MongoEC2Instance.PrivateIp}";
+          $mongoHosts = "${MongoEC2Instance.PrivateIp}:27017,${MongoReplicaInstance2.PrivateIp}:27017,${MongoReplicaInstance3.PrivateIp}:27017";
           $mongoUser = "${MongoAppUsername}";
           $mongoPassword = "${MongoAppPassword}";
-          $uri = "mongodb://" . rawurlencode($mongoUser) . ":" . rawurlencode($mongoPassword) . "@$mongoIp:27017/civicnexus?authSource=civicnexus";
+          $uri = "mongodb://" . rawurlencode($mongoUser) . ":" . rawurlencode($mongoPassword) . "@$mongoHosts/civicnexus?authSource=civicnexus&replicaSet=rs0";
 
           try {
               require '/var/www/html/vendor/autoload.php';
@@ -776,19 +952,14 @@ Resources:
           Value: !Ref GroupName
 
   # ------------------------------------------------------------#
-  # Optional VDI Instance (not used in the two-person build)
+  # Optional VDI Instance (disabled by default for the two-person build)
   # ------------------------------------------------------------#
   VDISecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Condition: CreateVDI
     Properties:
-      GroupDescription: 'Insecure - Allows public RDP traffic'
+      GroupDescription: 'Private VDI security group - no public RDP'
       VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 3389
-          ToPort: 3389
-          CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
           Value: !Sub 'civicnexus-vdi-sg-${GroupName}'
@@ -802,7 +973,10 @@ Resources:
       InstanceType: t3.medium
       ImageId: ami-0efee5160a1079475 # Windows Server 2025 Base
       KeyName: !Ref KeyName
-      SubnetId: !Ref PublicSubnet1 # Insecurely placed in a public subnet for easy access
+      SubnetId: !Ref PrivateSubnet2
+      MetadataOptions:
+        HttpTokens: required
+        HttpEndpoint: enabled
       SecurityGroupIds:
         - !Ref VDISecurityGroup
       Tags:
@@ -819,11 +993,20 @@ Outputs:
     Description: 'Simple health endpoint for the web dashboard'
     Value: !Sub 'http://${WebServerInstance.PublicIp}/health.php'
   MongoServerPrivateIP:
-    Description: 'Private IP used by the web application to reach MongoDB'
+    Description: 'Private IP of the first MongoDB replica set member'
     Value: !GetAtt MongoEC2Instance.PrivateIp
   MongoServerSubnetId:
-    Description: 'Private subnet used by the MongoDB EC2 instance'
+    Description: 'Private subnet used by the first MongoDB replica set member'
     Value: !Ref PrivateSubnet1
+  MongoReplicaSetName:
+    Description: 'MongoDB replica set name'
+    Value: 'rs0'
+  MongoReplicaPrivateIPs:
+    Description: 'Private IP addresses used by the MongoDB replica set'
+    Value: !Join [', ', [!GetAtt MongoEC2Instance.PrivateIp, !GetAtt MongoReplicaInstance2.PrivateIp, !GetAtt MongoReplicaInstance3.PrivateIp]]
+  MongoReplicaConnectionString:
+    Description: 'Replica set connection string format without credentials'
+    Value: !Sub 'mongodb://<user>:<password>@${MongoEC2Instance.PrivateIp}:27017,${MongoReplicaInstance2.PrivateIp}:27017,${MongoReplicaInstance3.PrivateIp}:27017/civicnexus?authSource=civicnexus&replicaSet=rs0'
   MongoServerPublicIP:
     Description: 'Secure stack does not assign a public IP to MongoDB'
     Value: 'None'

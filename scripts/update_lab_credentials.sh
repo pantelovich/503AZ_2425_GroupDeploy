@@ -30,6 +30,14 @@ if [[ -z "$ACCESS_KEY" || -z "$SECRET_KEY" || -z "$SESSION_TOKEN" ]]; then
   exit 1
 fi
 
+random_secret() {
+  if command -v openssl >/dev/null 2>&1; then
+    openssl rand -hex 24
+  else
+    date +%s%N | shasum -a 256 | awk '{print substr($1, 1, 48)}'
+  fi
+}
+
 aws configure set aws_access_key_id "$ACCESS_KEY" --profile "$PROFILE"
 aws configure set aws_secret_access_key "$SECRET_KEY" --profile "$PROFILE"
 aws configure set aws_session_token "$SESSION_TOKEN" --profile "$PROFILE"
@@ -44,7 +52,16 @@ if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
   gh secret set AWS_SECRET_ACCESS_KEY --repo "$REPO" --body "$SECRET_KEY"
   gh secret set AWS_SESSION_TOKEN --repo "$REPO" --body "$SESSION_TOKEN"
   gh secret set AWS_REGION --repo "$REPO" --body "$REGION"
-  echo "GitHub Actions AWS secrets updated for $REPO"
+
+  MONGO_ADMIN_PASSWORD_VALUE="${MONGO_ADMIN_PASSWORD_VALUE:-$(random_secret)}"
+  MONGO_APP_PASSWORD_VALUE="${MONGO_APP_PASSWORD_VALUE:-$(random_secret)}"
+  MONGO_REPLICA_KEY_VALUE="${MONGO_REPLICA_KEY_VALUE:-$(random_secret)}"
+
+  gh secret set MONGO_ADMIN_PASSWORD --repo "$REPO" --body "$MONGO_ADMIN_PASSWORD_VALUE"
+  gh secret set MONGO_APP_PASSWORD --repo "$REPO" --body "$MONGO_APP_PASSWORD_VALUE"
+  gh secret set MONGO_REPLICA_KEY --repo "$REPO" --body "$MONGO_REPLICA_KEY_VALUE"
+
+  echo "GitHub Actions AWS and MongoDB deploy secrets updated for $REPO"
 else
   echo "GitHub CLI is not authenticated, so repo secrets were not updated."
   echo "Run: gh auth login -h github.com"

@@ -15,6 +15,8 @@ mkdir -p "$OUT_DIR"
 
 MONGO_PUBLIC_IP="${MONGO_PUBLIC_IP:-${MONGO_IP:-}}"
 MONGO_PRIVATE_IP="${MONGO_PRIVATE_IP:-}"
+MONGO_REPLICA_PRIVATE_IPS="${MONGO_REPLICA_PRIVATE_IPS:-}"
+MONGO_REPLICA_SET="${MONGO_REPLICA_SET:-}"
 BACKUP_BUCKET="${MONGO_BACKUP_BUCKET:-}"
 
 if [[ -z "$MONGO_PUBLIC_IP" ]]; then
@@ -41,6 +43,22 @@ if [[ -z "$BACKUP_BUCKET" ]]; then
     --output text 2>/dev/null || true)"
 fi
 
+if [[ -z "$MONGO_REPLICA_PRIVATE_IPS" ]]; then
+  MONGO_REPLICA_PRIVATE_IPS="$(aws cloudformation describe-stacks \
+    --stack-name "$STACK_NAME" \
+    --region "$REGION" \
+    --query "Stacks[0].Outputs[?OutputKey=='MongoReplicaPrivateIPs'].OutputValue" \
+    --output text 2>/dev/null || true)"
+fi
+
+if [[ -z "$MONGO_REPLICA_SET" ]]; then
+  MONGO_REPLICA_SET="$(aws cloudformation describe-stacks \
+    --stack-name "$STACK_NAME" \
+    --region "$REGION" \
+    --query "Stacks[0].Outputs[?OutputKey=='MongoReplicaSetName'].OutputValue" \
+    --output text 2>/dev/null || true)"
+fi
+
 if [[ -z "$MONGO_PUBLIC_IP" || "$MONGO_PUBLIC_IP" == "None" ]]; then
   MONGO_PUBLIC_IP="None"
 fi
@@ -51,6 +69,14 @@ fi
 
 if [[ -z "$BACKUP_BUCKET" || "$BACKUP_BUCKET" == "None" ]]; then
   BACKUP_BUCKET="None"
+fi
+
+if [[ -z "$MONGO_REPLICA_PRIVATE_IPS" || "$MONGO_REPLICA_PRIVATE_IPS" == "None" ]]; then
+  MONGO_REPLICA_PRIVATE_IPS="$MONGO_PRIVATE_IP"
+fi
+
+if [[ -z "$MONGO_REPLICA_SET" || "$MONGO_REPLICA_SET" == "None" ]]; then
+  MONGO_REPLICA_SET="None"
 fi
 
 MONGO_INSTANCE_ID="${MONGO_INSTANCE_ID:-}"
@@ -82,6 +108,8 @@ fi
 
 echo "$MONGO_PUBLIC_IP" > "$OUT_DIR/${TODAY}_mongodb_public_ip.txt"
 echo "$MONGO_PRIVATE_IP" > "$OUT_DIR/${TODAY}_mongodb_private_ip.txt"
+echo "$MONGO_REPLICA_PRIVATE_IPS" > "$OUT_DIR/${TODAY}_mongodb_replica_private_ips.txt"
+echo "$MONGO_REPLICA_SET" > "$OUT_DIR/${TODAY}_mongodb_replica_set_name.txt"
 echo "$MONGO_INSTANCE_ID" > "$OUT_DIR/${TODAY}_mongodb_instance_id.txt"
 echo "$MONGO_SG_ID" > "$OUT_DIR/${TODAY}_mongodb_security_group_id.txt"
 echo "$BACKUP_BUCKET" > "$OUT_DIR/${TODAY}_mongodb_backup_bucket.txt"
@@ -173,6 +201,18 @@ MongoDB private IP:
 $MONGO_PRIVATE_IP
 \`\`\`
 
+MongoDB replica set:
+
+\`\`\`text
+$MONGO_REPLICA_SET
+\`\`\`
+
+MongoDB replica private IPs:
+
+\`\`\`text
+$MONGO_REPLICA_PRIVATE_IPS
+\`\`\`
+
 MongoDB backup bucket:
 
 \`\`\`text
@@ -192,6 +232,8 @@ Files collected:
 9. ${TODAY}_mongodb_connection_check.txt
 10. ${TODAY}_mongodb_backup_bucket.txt
 11. ${TODAY}_mongodb_backup_objects.txt
+12. ${TODAY}_mongodb_replica_private_ips.txt
+13. ${TODAY}_mongodb_replica_set_name.txt
 
 What this supports:
 
@@ -201,6 +243,7 @@ What this supports:
 4. For the secure stack, public access should be blocked or there should be no public IP.
 5. The connection output shows whether the current session has authenticated users when a connection is allowed.
 6. Backup objects can be checked when the secure template includes the MongoDB backup bucket.
+7. Replica set outputs can be checked when the final secure template uses multiple private MongoDB nodes.
 EOF
 
 echo "Database evidence saved in $OUT_DIR"

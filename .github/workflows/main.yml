@@ -56,7 +56,23 @@ jobs:
       - name: Validate CloudFormation template
         run: aws cloudformation validate-template --template-body file://${{ inputs.template_file }}
 
-      - name: Deploy Main CivicNexus Stack
+      - name: Deploy Secure CivicNexus Stack
+        if: inputs.template_file == 'cfstack-secure.yml'
+        run: |
+          aws cloudformation deploy \
+            --stack-name ${{ secrets.GROUP_NAME }}-civicnexus-stack \
+            --template-file ${{ inputs.template_file }} \
+            --capabilities CAPABILITY_IAM \
+            --parameter-overrides \
+              GroupName=${{ secrets.GROUP_NAME }} \
+              GroupSize=${{ secrets.GROUP_SIZE }} \
+              KeyName=${{ secrets.KEY_NAME }} \
+              MongoAdminPassword=${{ secrets.MONGO_ADMIN_PASSWORD }} \
+              MongoAppPassword=${{ secrets.MONGO_APP_PASSWORD }} \
+              MongoReplicaKey=${{ secrets.MONGO_REPLICA_KEY }}
+
+      - name: Deploy Baseline CivicNexus Stack
+        if: inputs.template_file == 'cfstack.yml'
         run: |
           aws cloudformation deploy \
             --stack-name ${{ secrets.GROUP_NAME }}-civicnexus-stack \
