@@ -15,6 +15,11 @@ Parameters:
     Description: Set to true only if the optional third VDI asset is required.
     Default: 'false'
     AllowedValues: ['true', 'false']
+  EnableEvidenceServices:
+    Type: String
+    Description: Set to true only if the lab allows IAM roles for Flow Logs and S3 backup upload evidence.
+    Default: 'false'
+    AllowedValues: ['true', 'false']
   KeyName:
     Type: 'AWS::EC2::KeyPair::KeyName'
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instances.
@@ -51,6 +56,7 @@ Conditions:
   CreateVDI: !And
     - !Equals [!Ref GroupSize, 3]
     - !Equals [!Ref EnableVDI, 'true']
+  CreateEvidenceServices: !Equals [!Ref EnableEvidenceServices, 'true']
 
 Resources:
   # ------------------------------------------------------------#
@@ -233,6 +239,7 @@ Resources:
 
   VpcFlowLogGroup:
     Type: AWS::Logs::LogGroup
+    Condition: CreateEvidenceServices
     Properties:
       RetentionInDays: 7
       Tags:
@@ -243,6 +250,7 @@ Resources:
 
   VpcFlowLogsRole:
     Type: AWS::IAM::Role
+    Condition: CreateEvidenceServices
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -272,6 +280,7 @@ Resources:
 
   VpcFlowLog:
     Type: AWS::EC2::FlowLog
+    Condition: CreateEvidenceServices
     Properties:
       DeliverLogsPermissionArn: !GetAtt VpcFlowLogsRole.Arn
       LogDestinationType: cloud-watch-logs
@@ -312,6 +321,7 @@ Resources:
 
   MongoBackupRole:
     Type: AWS::IAM::Role
+    Condition: CreateEvidenceServices
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -340,6 +350,7 @@ Resources:
 
   MongoBackupInstanceProfile:
     Type: AWS::IAM::InstanceProfile
+    Condition: CreateEvidenceServices
     Properties:
       Roles:
         - !Ref MongoBackupRole
@@ -388,7 +399,7 @@ Resources:
       SubnetId: !Ref PrivateSubnet1
       PrivateIpAddress: 10.0.10.10
       KeyName: !Ref KeyName
-      IamInstanceProfile: !Ref MongoBackupInstanceProfile
+      IamInstanceProfile: !If [CreateEvidenceServices, !Ref MongoBackupInstanceProfile, !Ref 'AWS::NoValue']
       MetadataOptions:
         HttpTokens: required
         HttpEndpoint: enabled
@@ -909,12 +920,14 @@ Resources:
                   'serverSelectionTimeoutMS' => 2000,
                   'connectTimeoutMS' => 2000
               ]);
-              $client->selectDatabase('civicnexus')->command(['ping' => 1]);
+              $db = $client->civicnexus;
+              $recordCount = $db->urban_environment_data->countDocuments();
 
               echo json_encode([
                   'service' => 'civicnexus-dashboard',
                   'status' => 'ok',
-                  'database' => 'reachable'
+                  'database' => 'reachable',
+                  'urban_records' => $recordCount
               ]);
           } catch (Exception $e) {
               error_log("Health check database error: " . $e->getMessage());
@@ -1018,9 +1031,11 @@ Outputs:
     Value: !Ref MongoBackupBucket
   VpcFlowLogGroupName:
     Description: 'CloudWatch Logs group used by VPC Flow Logs'
+    Condition: CreateEvidenceServices
     Value: !Ref VpcFlowLogGroup
   VpcFlowLogId:
     Description: 'VPC Flow Log resource used for accepted and rejected traffic evidence'
+    Condition: CreateEvidenceServices
     Value: !Ref VpcFlowLog
   VDIInstanceId:
     Description: 'Instance ID of the VDI instance (if created)'

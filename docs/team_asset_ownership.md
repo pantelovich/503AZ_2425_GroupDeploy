@@ -28,7 +28,8 @@ Current secure target:
 4. Use VPN/SSM for admin access where possible, not public SSH.
 5. Keep MongoDB open only to the web/app security group and replica members.
 6. Run MongoDB as a private replica set only if the final deploy proves it works.
-7. Treat the 402/S3 frontend as an extra after the secure stack works.
+7. Keep lab-heavy evidence services disabled by default because AWS Academy blocks some IAM role creation.
+8. Treat the 402/S3 frontend as an extra after the secure stack works.
 
 ## Current Work
 
@@ -78,3 +79,4 @@ Evidence can be:
 | 2026-05-21 | Pantelis | Added network and audit evidence helper for Flow Logs and CloudTrail. |
 | 2026-05-22 | Pantelis / Mike | Brought in the useful MongoDB replica set work on a clean branch, without OpenVPN. |
 | 2026-05-22 | Pantelis | Disabled optional VDI by default and removed public RDP from the secure template. |
+| 2026-05-22 | Pantelis | Deployed the clean replica branch in the AWS lab with evidence services disabled because the lab blocks IAM role creation. |

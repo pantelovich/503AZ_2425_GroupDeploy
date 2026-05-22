@@ -67,6 +67,7 @@ jobs:
               GroupName=${{ secrets.GROUP_NAME }} \
               GroupSize=${{ secrets.GROUP_SIZE }} \
               KeyName=${{ secrets.KEY_NAME }} \
+              EnableEvidenceServices=false \
               MongoAdminPassword=${{ secrets.MONGO_ADMIN_PASSWORD }} \
               MongoAppPassword=${{ secrets.MONGO_APP_PASSWORD }} \
               MongoReplicaKey=${{ secrets.MONGO_REPLICA_KEY }}
