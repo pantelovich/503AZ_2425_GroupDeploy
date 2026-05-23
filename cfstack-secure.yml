@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'CloudFormation stack for the 503AZ CivicNexus project with first webserver security changes.'
+Description: '503AZ CivicNexus secure test stack.'
 
 Parameters:
   GroupName:
@@ -62,7 +62,7 @@ Resources:
       EnableDnsHostnames: true
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-vpc-${GroupName}'
+          Value: !Sub 'vpc_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -88,7 +88,7 @@ Resources:
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-public-subnet-1-${GroupName}'
+          Value: !Sub 'public1_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -101,7 +101,7 @@ Resources:
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-public-subnet-2-${GroupName}'
+          Value: !Sub 'public2_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -113,7 +113,7 @@ Resources:
       AvailabilityZone: !Select [0, !GetAZs '']
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-private-subnet-1-${GroupName}'
+          Value: !Sub 'private1_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -125,7 +125,7 @@ Resources:
       AvailabilityZone: !Select [1, !GetAZs '']
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-private-subnet-2-${GroupName}'
+          Value: !Sub 'private2_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -137,7 +137,7 @@ Resources:
       AvailabilityZone: !Select [2, !GetAZs '']
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-private-subnet-3-${GroupName}'
+          Value: !Sub 'private3_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
   
@@ -147,7 +147,7 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-public-rt-${GroupName}'
+          Value: !Sub 'publicRT_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -177,7 +177,7 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-private-rt-${GroupName}'
+          Value: !Sub 'privateRT_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -188,7 +188,7 @@ Resources:
       Domain: vpc
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-nat-eip-${GroupName}'
+          Value: !Sub 'natIP_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -199,7 +199,7 @@ Resources:
       SubnetId: !Ref PublicSubnet1
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-nat-gateway-${GroupName}'
+          Value: !Sub 'natGW_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -248,7 +248,7 @@ Resources:
           CidrIp: !Ref AdminAccessCidr
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-openvpn-sg-${GroupName}'
+          Value: !Sub 'openVPN_SG_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -380,7 +380,7 @@ Resources:
           systemctl start openvpn-server@server
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-openvpn-instance-${GroupName}'
+          Value: !Sub 'openVPN_EC2_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -390,7 +390,7 @@ Resources:
       RetentionInDays: 7
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-vpc-flow-logs-${GroupName}'
+          Value: !Sub 'flowLogs_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -434,7 +434,7 @@ Resources:
       TrafficType: ALL
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-vpc-flow-log-${GroupName}'
+          Value: !Sub 'vpcFlow_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -459,7 +459,7 @@ Resources:
             ExpirationInDays: 7
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-mongodb-backups-${GroupName}'
+          Value: !Sub 'mongoBackups_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -507,7 +507,7 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-mongodb-sg-${GroupName}'
+          Value: !Sub 'mongo_SG_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -765,7 +765,7 @@ Resources:
           fi
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-mongodb-1-${GroupName}'
+          Value: !Sub 'mongo1_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -821,7 +821,7 @@ Resources:
           systemctl start mongod
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-mongodb-2-${GroupName}'
+          Value: !Sub 'mongo2_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -877,7 +877,7 @@ Resources:
           systemctl start mongod
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-mongodb-3-${GroupName}'
+          Value: !Sub 'mongo3_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
           
@@ -896,7 +896,7 @@ Resources:
           CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-web-server-sg-${GroupName}'
+          Value: !Sub 'web_SG_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
           
@@ -1125,7 +1125,7 @@ Resources:
           systemctl restart httpd
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-web-server-instance-${GroupName}'
+          Value: !Sub 'web_EC2_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -1145,7 +1145,7 @@ Resources:
           CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-vdi-sg-${GroupName}'
+          Value: !Sub 'vdi_SG_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -1164,7 +1164,7 @@ Resources:
             - !Ref VDISecurityGroup
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-vdi-instance-${GroupName}'
+          Value: !Sub 'vdi_EC2_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
           
