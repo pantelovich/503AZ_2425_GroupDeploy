@@ -40,12 +40,6 @@ Parameters:
     NoEcho: true
     MinLength: 12
     AllowedPattern: '^[A-Za-z0-9_]{12,64}$'
-  MongoReplicaKey:
-    Type: String
-    Description: Shared MongoDB replica set key. Use letters and numbers only.
-    NoEcho: true
-    MinLength: 32
-    AllowedPattern: '^[A-Za-z0-9]{32,128}$'
 
 Conditions:
   CreateVDI: !Equals [!Ref GroupSize, 3]
@@ -490,187 +484,17 @@ Resources:
           dnf install -y mongodb-org
           dnf install -y awscli || true
 
-          cat <<'EOF' > /etc/mongo-keyfile
-          ${MongoReplicaKey}
-          EOF
-          chmod 400 /etc/mongo-keyfile
-          chown mongod:mongod /etc/mongo-keyfile
-
-          sed -i 's/bindIp: 127.0.0.1/bindIp: 127.0.0.1,10.0.10.10/g' /etc/mongod.conf
-          cat <<'EOF' >> /etc/mongod.conf
-
-          replication:
-            replSetName: rs0
-
-          security:
-            authorization: enabled
-            keyFile: /etc/mongo-keyfile
-          EOF
-
           systemctl enable mongod
           systemctl start mongod
-          # Listen only on localhost and the private VPC address
-          TOKEN=$(curl -sS -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-          PRIVATE_IP=$(curl -sS -H "X-aws-ec2-metadata-token: $TOKEN" "http://169.254.169.254/latest/meta-data/local-ipv4")
-          sed -i "s/bindIp: 127.0.0.1/bindIp: 127.0.0.1,$PRIVATE_IP/g" /etc/mongod.conf
-          systemctl restart mongod
 
-          for attempt in {1..30}; do
-            if mongosh mongodb://127.0.0.1:27017 --quiet --eval 'db.adminCommand({ping:1})' >/dev/null 2>&1; then
-              break
-            fi
-            sleep 5
-          done
-
-          for attempt in {1..30}; do
-            if timeout 2 bash -c "</dev/tcp/10.0.11.10/27017" >/dev/null 2>&1 && timeout 2 bash -c "</dev/tcp/10.0.12.10/27017" >/dev/null 2>&1; then
-              break
-            fi
-            sleep 5
-          done
-
-          mongosh mongodb://127.0.0.1:27017/admin --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"10.0.10.10:27017",priority:2},{_id:1,host:"10.0.11.10:27017"},{_id:2,host:"10.0.12.10:27017"}]})' || true
-
-          for attempt in {1..30}; do
-            if mongosh mongodb://127.0.0.1:27017/admin --quiet --eval 'db.hello().isWritablePrimary' | grep -q true; then
-              break
-            fi
-            sleep 5
-          done
-
-          cat <<'EOF' > /tmp/create_admin.js
-          db = db.getSiblingDB('admin');
-          db.createUser({
-              user: "${MongoAdminUsername}",
-              pwd: "${MongoAdminPassword}",
-              roles: [ { role: "root", db: "admin" } ]
-          });
-          print("MongoDB admin user created.");
+          cat <<'EOF' > /home/ec2-user/README_mongo.txt
+          MongoDB and AWS CLI are installed by CloudFormation.
+          Replica set, bind address, users, seed data and backup checks are manual steps.
+          Use the scripts in the repo:
+          - scripts/manual_mongodb_node_setup.sh
+          - scripts/manual_mongodb_primary_setup.sh
           EOF
-          mongosh mongodb://127.0.0.1:27017/admin /tmp/create_admin.js || true
-          rm -f /tmp/create_admin.js
-
-          cat <<'EOF' > /tmp/seed_civicnexus.js
-          db = db.getSiblingDB('civicnexus');
-
-          if (!db.getUser("${MongoAppUsername}")) {
-              db.createUser({
-                  user: "${MongoAppUsername}",
-                  pwd: "${MongoAppPassword}",
-                  roles: [ { role: "readWrite", db: "civicnexus" } ]
-              });
-          }
-
-          db.urban_environment_data.drop();
-          db.personnel_data.drop();
-          db.system_operational_logs.drop();
-
-          db.urban_environment_data.insertMany([
-              {
-                  record_id: "traffic-flow-001",
-                  data_type: "traffic_flow_monitor",
-                  location: "Central Avenue / Sector 4",
-                  timestamp: new Date("2026-04-29T08:15:00Z"),
-                  reading_value: 428,
-                  unit: "vehicles/hour",
-                  metadata: {
-                      sensor_vendor: "CivicSense",
-                      status: "normal"
-                  }
-              },
-              {
-                  record_id: "air-quality-014",
-                  data_type: "air_quality_reading",
-                  location: "Riverside Monitoring Station",
-                  timestamp: new Date("2026-04-29T08:20:00Z"),
-                  reading_value: 41,
-                  unit: "AQI",
-                  metadata: {
-                      pm25: 12,
-                      pm10: 18,
-                      status: "good"
-                  }
-              }
-          ]);
-
-          db.personnel_data.insertMany([
-              {
-                  employee_id: "CN-001",
-                  name: "Dr. Maya Patel",
-                  job_role: "Urban Planner",
-                  contact: "maya.patel@civicnexus.local",
-                  security_clearance: "Level 3"
-              },
-              {
-                  employee_id: "CN-014",
-                  name: "Jordan Ellis",
-                  job_role: "Field Technician",
-                  contact: "jordan.ellis@civicnexus.local",
-                  security_clearance: "Level 2"
-              }
-          ]);
-
-          db.system_operational_logs.insertMany([
-              {
-                  log_id: "log-traffic-9001",
-                  timestamp: new Date("2026-04-29T08:25:00Z"),
-                  subsystem: "Traffic Light Control",
-                  event_type: "sequence_update",
-                  details: {
-                      junction: "A12",
-                      plan: "peak_morning_adjustment",
-                      green_seconds: 42
-                  }
-              },
-              {
-                  log_id: "log-waste-9002",
-                  timestamp: new Date("2026-04-29T08:40:00Z"),
-                  subsystem: "Waste Management Dispatch",
-                  event_type: "route_optimised",
-                  details: {
-                      district: "North Dock",
-                      crew_id: "WM-07",
-                      pickup_priority: "high"
-                  }
-              },
-              {
-                  log_id: "log-transport-9003",
-                  timestamp: new Date("2026-04-29T08:55:00Z"),
-                  subsystem: "Public Transport Dispatch",
-                  event_type: "service_alert",
-                  details: {
-                      line: "TR-16",
-                      status: "minor_delay",
-                      reason: "signal_check_in_progress"
-                  }
-              }
-          ]);
-
-          print("CivicNexus database populated successfully.");
-          EOF
-          mongosh -u "${MongoAdminUsername}" -p "${MongoAdminPassword}" --authenticationDatabase admin "mongodb://10.0.10.10:27017,10.0.11.10:27017,10.0.12.10:27017/civicnexus?replicaSet=rs0" /tmp/seed_civicnexus.js
-          rm -f /tmp/seed_civicnexus.js
-
-          mongosh -u "${MongoAppUsername}" -p "${MongoAppPassword}" --authenticationDatabase civicnexus "mongodb://10.0.10.10:27017,10.0.11.10:27017,10.0.12.10:27017/civicnexus?replicaSet=rs0" --quiet --eval 'db.runCommand({connectionStatus:1})'
-
-          BACKUP_BUCKET="${MongoBackupBucket}"
-          BACKUP_FILE="/tmp/civicnexus-initial-backup.archive"
-          BACKUP_LOG="/var/log/civicnexus-backup-restore.log"
-          BACKUP_URI="mongodb://${MongoAdminUsername}:${MongoAdminPassword}@10.0.10.10:27017,10.0.11.10:27017,10.0.12.10:27017/admin?authSource=admin&replicaSet=rs0"
-
-          {
-            echo "CivicNexus MongoDB backup and restore check"
-            date -u
-            mongodump --uri "$BACKUP_URI" --db civicnexus --archive="$BACKUP_FILE"
-            mongorestore --uri "$BACKUP_URI" --archive="$BACKUP_FILE" --nsFrom='civicnexus.*' --nsTo='civicnexus_restore_check.*' --drop
-            mongosh "$BACKUP_URI" --quiet --eval 'const d=db.getSiblingDB("civicnexus_restore_check"); printjson({urban:d.urban_environment_data.countDocuments(), personnel:d.personnel_data.countDocuments(), logs:d.system_operational_logs.countDocuments()}); d.dropDatabase();'
-            if command -v aws >/dev/null 2>&1; then
-              aws s3 cp "$BACKUP_FILE" "s3://$BACKUP_BUCKET/mongodb/civicnexus-initial-backup.archive"
-            fi
-          } > "$BACKUP_LOG" 2>&1 || true
-          if command -v aws >/dev/null 2>&1; then
-            aws s3 cp "$BACKUP_LOG" "s3://$BACKUP_BUCKET/mongodb/civicnexus-backup-restore.log" || true
-          fi
+          chown ec2-user:ec2-user /home/ec2-user/README_mongo.txt
       Tags:
         - Key: Name
           Value: !Sub 'mongo1_${GroupName}'
@@ -708,25 +532,14 @@ Resources:
           EOF
           dnf install -y mongodb-org
 
-          cat <<'EOF' > /etc/mongo-keyfile
-          ${MongoReplicaKey}
-          EOF
-          chmod 400 /etc/mongo-keyfile
-          chown mongod:mongod /etc/mongo-keyfile
-
-          sed -i 's/bindIp: 127.0.0.1/bindIp: 127.0.0.1,10.0.11.10/g' /etc/mongod.conf
-          cat <<'EOF' >> /etc/mongod.conf
-
-          replication:
-            replSetName: rs0
-
-          security:
-            authorization: enabled
-            keyFile: /etc/mongo-keyfile
-          EOF
-
           systemctl enable mongod
           systemctl start mongod
+
+          cat <<'EOF' > /home/ec2-user/README_mongo.txt
+          MongoDB is installed by CloudFormation.
+          Configure this node manually with scripts/manual_mongodb_node_setup.sh.
+          EOF
+          chown ec2-user:ec2-user /home/ec2-user/README_mongo.txt
       Tags:
         - Key: Name
           Value: !Sub 'mongo2_${GroupName}'
@@ -764,25 +577,14 @@ Resources:
           EOF
           dnf install -y mongodb-org
 
-          cat <<'EOF' > /etc/mongo-keyfile
-          ${MongoReplicaKey}
-          EOF
-          chmod 400 /etc/mongo-keyfile
-          chown mongod:mongod /etc/mongo-keyfile
-
-          sed -i 's/bindIp: 127.0.0.1/bindIp: 127.0.0.1,10.0.12.10/g' /etc/mongod.conf
-          cat <<'EOF' >> /etc/mongod.conf
-
-          replication:
-            replSetName: rs0
-
-          security:
-            authorization: enabled
-            keyFile: /etc/mongo-keyfile
-          EOF
-
           systemctl enable mongod
           systemctl start mongod
+
+          cat <<'EOF' > /home/ec2-user/README_mongo.txt
+          MongoDB is installed by CloudFormation.
+          Configure this node manually with scripts/manual_mongodb_node_setup.sh.
+          EOF
+          chown ec2-user:ec2-user /home/ec2-user/README_mongo.txt
       Tags:
         - Key: Name
           Value: !Sub 'mongo3_${GroupName}'
