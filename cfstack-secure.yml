@@ -294,6 +294,23 @@ Resources:
         - Key: GroupName
           Value: !Ref GroupName
 
+  OpenVPNElasticIP:
+    Type: AWS::EC2::EIP
+    DependsOn: AttachGateway
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub 'openVPN_EIP_${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  OpenVPNElasticIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt OpenVPNElasticIP.AllocationId
+      InstanceId: !Ref OpenVPNInstance
+
   VpcFlowLogGroup:
     Type: AWS::Logs::LogGroup
     Condition: CreateAdvancedEvidenceResources
@@ -853,6 +870,23 @@ Resources:
         - Key: GroupName
           Value: !Ref GroupName
 
+  WebServerElasticIP:
+    Type: AWS::EC2::EIP
+    DependsOn: AttachGateway
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub 'web_EIP_${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  WebServerElasticIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt WebServerElasticIP.AllocationId
+      InstanceId: !Ref WebServerInstance
+
   # ------------------------------------------------------------#
   # Asset 3: VDI Instance (Student 3 - Conditional)
   # ------------------------------------------------------------#
@@ -895,10 +929,10 @@ Resources:
 Outputs:
   WebServerPublicIP:
     Description: 'Public IP address of the Web Server'
-    Value: !GetAtt WebServerInstance.PublicIp
+    Value: !Ref WebServerElasticIP
   WebServerHealthURL:
     Description: 'Simple health endpoint for the web dashboard'
-    Value: !Sub 'http://${WebServerInstance.PublicIp}/health.php'
+    Value: !Sub 'http://${WebServerElasticIP}/health.php'
   MongoServerPrivateIP:
     Description: 'Private IP of the first MongoDB replica set member'
     Value: !GetAtt MongoEC2Instance.PrivateIp
@@ -922,7 +956,7 @@ Outputs:
     Value: !Ref NatGateway
   OpenVPNServerPublicIP:
     Description: 'Public IP address of the OpenVPN admin server'
-    Value: !GetAtt OpenVPNInstance.PublicIp
+    Value: !Ref OpenVPNElasticIP
   OpenVPNClientConfigPath:
     Description: 'Client profile path on the OpenVPN server'
     Value: '/home/ec2-user/civicnexus-vpn.ovpn'
