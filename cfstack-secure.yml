@@ -40,9 +40,17 @@ Parameters:
     NoEcho: true
     MinLength: 12
     AllowedPattern: '^[A-Za-z0-9_]{12,64}$'
+  EnableAdvancedEvidenceResources:
+    Type: String
+    Description: Create VPC Flow Logs and S3 backup evidence resources. Keep false in AWS Academy labs if IAM role creation is blocked.
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
 
 Conditions:
   CreateVDI: !Equals [!Ref GroupSize, 3]
+  CreateAdvancedEvidenceResources: !Equals [!Ref EnableAdvancedEvidenceResources, 'true']
 
 Resources:
   # ------------------------------------------------------------#
@@ -288,6 +296,7 @@ Resources:
 
   VpcFlowLogGroup:
     Type: AWS::Logs::LogGroup
+    Condition: CreateAdvancedEvidenceResources
     Properties:
       RetentionInDays: 7
       Tags:
@@ -298,6 +307,7 @@ Resources:
 
   VpcFlowLogsRole:
     Type: AWS::IAM::Role
+    Condition: CreateAdvancedEvidenceResources
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -327,6 +337,7 @@ Resources:
 
   VpcFlowLog:
     Type: AWS::EC2::FlowLog
+    Condition: CreateAdvancedEvidenceResources
     Properties:
       DeliverLogsPermissionArn: !GetAtt VpcFlowLogsRole.Arn
       LogDestinationType: cloud-watch-logs
@@ -342,6 +353,7 @@ Resources:
 
   MongoBackupBucket:
     Type: AWS::S3::Bucket
+    Condition: CreateAdvancedEvidenceResources
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
@@ -367,6 +379,7 @@ Resources:
 
   MongoBackupRole:
     Type: AWS::IAM::Role
+    Condition: CreateAdvancedEvidenceResources
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -395,6 +408,7 @@ Resources:
 
   MongoBackupInstanceProfile:
     Type: AWS::IAM::InstanceProfile
+    Condition: CreateAdvancedEvidenceResources
     Properties:
       Roles:
         - !Ref MongoBackupRole
@@ -461,7 +475,7 @@ Resources:
       SubnetId: !Ref PrivateSubnet1
       PrivateIpAddress: 10.0.10.10
       KeyName: !Ref KeyName
-      IamInstanceProfile: !Ref MongoBackupInstanceProfile
+      IamInstanceProfile: !If [CreateAdvancedEvidenceResources, !Ref MongoBackupInstanceProfile, !Ref 'AWS::NoValue']
       MetadataOptions:
         HttpTokens: required
         HttpEndpoint: enabled
@@ -914,12 +928,15 @@ Outputs:
     Value: '/home/ec2-user/civicnexus-vpn.ovpn'
   MongoBackupBucketName:
     Description: 'Encrypted S3 bucket used for MongoDB backup and restore evidence'
+    Condition: CreateAdvancedEvidenceResources
     Value: !Ref MongoBackupBucket
   VpcFlowLogGroupName:
     Description: 'CloudWatch Logs group used by VPC Flow Logs'
+    Condition: CreateAdvancedEvidenceResources
     Value: !Ref VpcFlowLogGroup
   VpcFlowLogId:
     Description: 'VPC Flow Log resource used for accepted and rejected traffic evidence'
+    Condition: CreateAdvancedEvidenceResources
     Value: !Ref VpcFlowLog
   VDIInstanceId:
     Description: 'Instance ID of the VDI instance (if created)'
