@@ -71,6 +71,7 @@ jobs:
               GroupSize=${{ secrets.GROUP_SIZE }} \
               KeyName=${{ secrets.KEY_NAME }} \
               EnableEvidenceServices=false \
+              EnableOpenVPN=false \
               MongoAdminPassword=${{ secrets.MONGO_ADMIN_PASSWORD }} \
               MongoAppPassword=${{ secrets.MONGO_APP_PASSWORD }} \
               MongoReplicaKey=${{ secrets.MONGO_REPLICA_KEY }}
@@ -127,7 +128,13 @@ jobs:
 
       - name: Show stack outputs
         run: |
+          if [ "${{ inputs.template_file }}" = "cfstack-402-serverless.yml" ]; then
+            STACK_NAME="${{ secrets.GROUP_NAME }}-402-serverless-addon"
+          else
+            STACK_NAME="${{ secrets.GROUP_NAME }}-civicnexus-stack"
+          fi
+
           aws cloudformation describe-stacks \
-            --stack-name ${{ secrets.GROUP_NAME }}-civicnexus-stack \
+            --stack-name "$STACK_NAME" \
             --query "Stacks[0].Outputs" \
             --output table
