@@ -20,6 +20,16 @@ Parameters:
     Description: Set to true only if the lab allows IAM roles for Flow Logs and S3 backup upload evidence.
     Default: 'false'
     AllowedValues: ['true', 'false']
+  EnableOpenVPN:
+    Type: String
+    Description: Set to true only when collecting VPN admin access evidence.
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+  AdminAccessCidr:
+    Type: String
+    Description: CIDR allowed to reach the optional OpenVPN admin server. Use your public IP with /32 where possible.
+    Default: 0.0.0.0/0
+    AllowedPattern: '^(([0-9]{1,3}\.){3}[0-9]{1,3})/([0-9]|[1-2][0-9]|3[0-2])$'
   KeyName:
     Type: 'AWS::EC2::KeyPair::KeyName'
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instances.
@@ -57,6 +67,7 @@ Conditions:
     - !Equals [!Ref GroupSize, 3]
     - !Equals [!Ref EnableVDI, 'true']
   CreateEvidenceServices: !Equals [!Ref EnableEvidenceServices, 'true']
+  CreateOpenVPN: !Equals [!Ref EnableOpenVPN, 'true']
 
 Resources:
   # ------------------------------------------------------------#
@@ -237,6 +248,90 @@ Resources:
       RouteTableId: !Ref PrivateRouteTable
       SubnetId: !Ref PrivateSubnet3
 
+  # ------------------------------------------------------------#
+  # Optional Admin VPN Access (Mike)
+  # ------------------------------------------------------------#
+  OpenVPNSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Condition: CreateOpenVPN
+    Properties:
+      GroupDescription: 'Allows administrator OpenVPN access into the VPC'
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: udp
+          FromPort: 1194
+          ToPort: 1194
+          CidrIp: !Ref AdminAccessCidr
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref AdminAccessCidr
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-openvpn-sg-mike-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  OpenVPNInstance:
+    Type: 'AWS::EC2::Instance'
+    Condition: CreateOpenVPN
+    DependsOn: DefaultPublicRoute
+    Properties:
+      InstanceType: t2.micro
+      KeyName: !Ref KeyName
+      SourceDestCheck: false
+      MetadataOptions:
+        HttpTokens: required
+        HttpEndpoint: enabled
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeviceIndex: 0
+          SubnetId: !Ref PublicSubnet2
+          GroupSet:
+            - !Ref OpenVPNSecurityGroup
+      ImageId: ami-00ca32bbc84273381 # Amazon Linux 2023
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -xe
+
+          dnf update -y
+          dnf install -y openvpn iptables-services openssl
+
+          mkdir -p /etc/openvpn/server /etc/openvpn/client-config /etc/openvpn/pki
+
+          cat <<'EOF' > /home/ec2-user/README_openvpn.txt
+          OpenVPN packages are installed by CloudFormation.
+          Certificates, routing and the client profile are configured manually.
+          Use the repo script: scripts/manual_openvpn_setup.sh.
+          EOF
+
+          chown ec2-user:ec2-user /home/ec2-user/README_openvpn.txt
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-openvpn-ec2-mike-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  OpenVPNElasticIP:
+    Type: AWS::EC2::EIP
+    Condition: CreateOpenVPN
+    DependsOn: AttachGateway
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-openvpn-eip-mike-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  OpenVPNElasticIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Condition: CreateOpenVPN
+    Properties:
+      AllocationId: !GetAtt OpenVPNElasticIP.AllocationId
+      InstanceId: !Ref OpenVPNInstance
+
   VpcFlowLogGroup:
     Type: AWS::Logs::LogGroup
     Condition: CreateEvidenceServices
@@ -377,6 +472,26 @@ Resources:
       FromPort: 27017
       ToPort: 27017
       SourceSecurityGroupId: !Ref WebServerSecurityGroup
+
+  MongoIngressFromOpenVPN:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: CreateOpenVPN
+    Properties:
+      GroupId: !Ref MongoSecurityGroup
+      IpProtocol: tcp
+      FromPort: 27017
+      ToPort: 27017
+      SourceSecurityGroupId: !Ref OpenVPNSecurityGroup
+
+  MongoSSHFromOpenVPN:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: CreateOpenVPN
+    Properties:
+      GroupId: !Ref MongoSecurityGroup
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      SourceSecurityGroupId: !Ref OpenVPNSecurityGroup
 
   MongoIngressFromReplicaMembers:
     Type: 'AWS::EC2::SecurityGroupIngress'
@@ -1107,6 +1222,14 @@ Outputs:
     Description: 'VPC Flow Log resource used for accepted and rejected traffic evidence'
     Condition: CreateEvidenceServices
     Value: !Ref VpcFlowLog
+  OpenVPNServerPublicIP:
+    Description: 'Public IP address of the optional OpenVPN admin server'
+    Condition: CreateOpenVPN
+    Value: !Ref OpenVPNElasticIP
+  OpenVPNClientConfigPath:
+    Description: 'Client profile path on the optional OpenVPN server after manual setup'
+    Condition: CreateOpenVPN
+    Value: '/home/ec2-user/civicnexus-vpn.ovpn'
   VDIInstanceId:
     Description: 'Instance ID of the VDI instance (if created)'
     Condition: CreateVDI

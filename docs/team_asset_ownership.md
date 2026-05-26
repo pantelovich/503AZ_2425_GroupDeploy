@@ -2,7 +2,7 @@
 
 Short note on who covered what.
 
-Last updated: 2026-05-26
+Last updated: 2026-05-27
 
 ## Ownership
 
@@ -33,6 +33,18 @@ For Mike next session:
    `503AZ Shared Work/Evidence/Screenshots/2026-05-26_402_serverless/`
 7. Do not merge this into the main secure stack yet. Review it first and keep the core coursework stack stable.
 
+Integration update:
+
+1. Clean branch started: `week6-final-integration`.
+2. Added optional OpenVPN infrastructure to `cfstack-secure.yml`.
+3. OpenVPN is off by default with `EnableOpenVPN=false`, so normal deploys stay cheaper and simpler.
+4. If VPN evidence is needed, deploy with `EnableOpenVPN=true` and restrict `AdminAccessCidr` to the current public IP with `/32`.
+5. Mike's manual setup scripts were added under `scripts/`:
+   - `scripts/manual_openvpn_setup.sh`
+   - `scripts/manual_mongodb_node_setup.sh`
+   - `scripts/manual_mongodb_primary_setup.sh`
+6. Do not replace the working web/MongoDB stack with Mike's whole branch. We are only taking the useful parts.
+
 Current secure target:
 
 1. Keep the web/app layer public.
@@ -44,12 +56,13 @@ Current secure target:
 7. Keep lab-heavy evidence services disabled by default because AWS Academy blocks some IAM role creation.
 8. Treat the 402/S3 frontend as an extra after the secure stack works.
 9. Keep the 402 serverless add-on separate from the main secure stack so it does not destabilise the core coursework environment.
+10. Keep OpenVPN optional, not always on.
 
 Current branch position:
 
 1. `week6-replica-cleanup` is the clean working base.
 2. Pantelis' web/app side has working deployment evidence from 2026-05-26.
-3. Mike's latest database branch still needs review before merge because it adds public endpoint changes.
+3. `week6-final-integration` now contains the 402 add-on and selected optional VPN/MongoDB manual setup work.
 
 ## Current Work
 
@@ -107,3 +120,4 @@ Evidence can be:
 | 2026-05-26 | Pantelis | Added a public summary API and stronger browser policy headers as an extra web-layer control. |
 | 2026-05-26 | Pantelis | Started a separate 402-style serverless add-on using Amplify/Cognito, Lambda, API Gateway and DynamoDB. |
 | 2026-05-26 | Pantelis | Pushed `pantelis/402-serverless-addon`, deployed it, tested the Lambda/DynamoDB public summary endpoint and saved frontend evidence. |
+| 2026-05-27 | Pantelis | Started `week6-final-integration`, added optional OpenVPN resources disabled by default, and brought in Mike's manual VPN/MongoDB setup scripts. |
