@@ -1,0 +1,160 @@
+:root {
+  color: #111827;
+  background: #eef3f7;
+  font-family: Avenir Next, Avenir, Helvetica, sans-serif;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+textarea {
+  font: inherit;
+}
+
+.shell {
+  min-height: 100vh;
+}
+
+.masthead {
+  background: #0f3b4a;
+  color: white;
+  padding: 48px clamp(20px, 6vw, 72px);
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: #93e1d8;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.masthead h1 {
+  max-width: 720px;
+  margin: 0;
+  font-size: clamp(2.4rem, 6vw, 5.4rem);
+  line-height: 0.95;
+}
+
+.masthead p {
+  max-width: 620px;
+  margin: 20px 0 0;
+  color: #dce9ee;
+  font-size: 1.1rem;
+}
+
+.panel {
+  padding: clamp(20px, 5vw, 60px);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.8fr);
+  gap: 28px;
+}
+
+h2 {
+  margin: 0 0 18px;
+  font-size: 1.2rem;
+}
+
+.meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.meta-row span {
+  padding: 8px 10px;
+  background: white;
+  border: 1px solid #d5dde5;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.records {
+  display: grid;
+  gap: 14px;
+}
+
+.record,
+.auth-box {
+  background: white;
+  border: 1px solid #d5dde5;
+  border-radius: 8px;
+  box-shadow: 0 16px 34px rgba(25, 44, 58, 0.08);
+}
+
+.record {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 16px;
+}
+
+.record span,
+.record small,
+.status {
+  color: #5c6875;
+}
+
+.record b {
+  color: #0f3b4a;
+}
+
+.auth-box {
+  padding: 20px;
+}
+
+.operator-form {
+  display: grid;
+  gap: 14px;
+}
+
+textarea {
+  width: 100%;
+  min-height: 120px;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid #c7d2dc;
+  border-radius: 6px;
+  resize: vertical;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+}
+
+button {
+  border: 0;
+  border-radius: 6px;
+  padding: 10px 14px;
+  background: #0f3b4a;
+  color: white;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: #dce4ea;
+  color: #111827;
+}
+
+.error {
+  color: #a21c2b;
+}
+
+@media (max-width: 860px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .record {
+    grid-template-columns: 1fr;
+  }
+}

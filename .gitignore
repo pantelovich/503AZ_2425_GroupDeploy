@@ -2,3 +2,7 @@
 ~$*.docx
 ~$*.xlsx
 *.tmp
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local

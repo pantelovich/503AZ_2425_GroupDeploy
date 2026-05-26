@@ -1,0 +1,301 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Optional 402-style CivicNexus serverless add-on using Cognito, Lambda, API Gateway and DynamoDB.'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Description: Short name used in serverless resource names.
+    Default: civicnexus
+    AllowedPattern: '^[a-zA-Z][a-zA-Z0-9-]{2,30}$'
+  AllowedOrigin:
+    Type: String
+    Description: Browser origin allowed to call the API. Use * for lab testing only.
+    Default: '*'
+
+Resources:
+  CivicNexusServerlessTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  CivicNexusUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub '${ProjectName}-operators'
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          RequireUppercase: true
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false
+
+  CivicNexusUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub '${ProjectName}-frontend'
+      UserPoolId: !Ref CivicNexusUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+      PreventUserExistenceErrors: ENABLED
+
+  CivicNexusApiFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-serverless-api'
+      Runtime: nodejs20.x
+      Handler: index.handler
+      Role: !Sub 'arn:aws:iam::${AWS::AccountId}:role/LabRole'
+      Timeout: 10
+      MemorySize: 128
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref CivicNexusServerlessTable
+          ALLOWED_ORIGIN: !Ref AllowedOrigin
+      Code:
+        ZipFile: |
+          const { DynamoDBClient, PutItemCommand, ScanCommand } = require("@aws-sdk/client-dynamodb");
+
+          const dynamo = new DynamoDBClient({});
+          const tableName = process.env.TABLE_NAME;
+          const allowedOrigin = process.env.ALLOWED_ORIGIN || "*";
+
+          const publicSeed = [
+            {
+              id: "traffic-flow-001",
+              dataType: "traffic_flow_monitor",
+              location: "Central Avenue / Sector 4",
+              reading: "428 vehicles/hour",
+              timestamp: "2026-04-29 08:15:00"
+            },
+            {
+              id: "air-quality-014",
+              dataType: "air_quality_reading",
+              location: "Riverside Monitoring Station",
+              reading: "41 AQI",
+              timestamp: "2026-04-29 08:20:00"
+            }
+          ];
+
+          const headers = {
+            "Access-Control-Allow-Origin": allowedOrigin,
+            "Access-Control-Allow-Headers": "Content-Type,Authorization",
+            "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+            "Content-Type": "application/json",
+            "Cache-Control": "no-store"
+          };
+
+          function reply(statusCode, body) {
+            return { statusCode, headers, body: JSON.stringify(body) };
+          }
+
+          function fromItem(item) {
+            return {
+              id: item.SK.S,
+              dataType: item.dataType.S,
+              location: item.location.S,
+              reading: item.reading.S,
+              timestamp: item.timestamp.S
+            };
+          }
+
+          async function loadPublicRecords() {
+            const result = await dynamo.send(new ScanCommand({
+              TableName: tableName,
+              FilterExpression: "PK = :pk",
+              ExpressionAttributeValues: {
+                ":pk": { S: "PUBLIC#CITY" }
+              }
+            }));
+
+            return (result.Items || []).map(fromItem);
+          }
+
+          async function seedPublicRecords() {
+            for (const record of publicSeed) {
+              await dynamo.send(new PutItemCommand({
+                TableName: tableName,
+                Item: {
+                  PK: { S: "PUBLIC#CITY" },
+                  SK: { S: record.id },
+                  dataType: { S: record.dataType },
+                  location: { S: record.location },
+                  reading: { S: record.reading },
+                  timestamp: { S: record.timestamp }
+                },
+                ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)"
+              })).catch((error) => {
+                if (error.name !== "ConditionalCheckFailedException") throw error;
+              });
+            }
+          }
+
+          async function publicSummary() {
+            let records = await loadPublicRecords();
+            if (records.length === 0) {
+              await seedPublicRecords();
+              records = await loadPublicRecords();
+            }
+
+            return reply(200, {
+              service: "civicnexus-serverless-summary",
+              status: "ok",
+              source: "dynamodb",
+              public_records: records,
+              personnel_records: "restricted",
+              operational_log_details: "restricted"
+            });
+          }
+
+          async function operatorNote(event) {
+            const claims = event.requestContext?.authorizer?.jwt?.claims || {};
+            const body = JSON.parse(event.body || "{}");
+            const note = String(body.note || "").trim();
+
+            if (!note || note.length > 500) {
+              return reply(400, { message: "note is required and must be under 500 characters" });
+            }
+
+            const now = new Date().toISOString();
+            const owner = claims.email || claims.username || claims.sub || "unknown";
+
+            await dynamo.send(new PutItemCommand({
+              TableName: tableName,
+              Item: {
+                PK: { S: "OPERATOR#NOTE" },
+                SK: { S: now },
+                owner: { S: owner },
+                note: { S: note }
+              }
+            }));
+
+            return reply(201, { status: "saved", owner, timestamp: now });
+          }
+
+          exports.handler = async (event) => {
+            const method = event.requestContext?.http?.method || event.httpMethod;
+            const path = event.rawPath || event.path || "/";
+
+            if (method === "OPTIONS") return reply(204, {});
+            if (method === "GET" && path.endsWith("/public-summary")) return publicSummary();
+            if (method === "POST" && path.endsWith("/operator-notes")) return operatorNote(event);
+
+            return reply(404, { message: "route not found" });
+          };
+
+  CivicNexusHttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub '${ProjectName}-serverless-api'
+      ProtocolType: HTTP
+      CorsConfiguration:
+        AllowOrigins:
+          - !Ref AllowedOrigin
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+
+  CivicNexusApiIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref CivicNexusHttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt CivicNexusApiFunction.Arn
+      PayloadFormatVersion: '2.0'
+
+  CivicNexusJwtAuthorizer:
+    Type: AWS::ApiGatewayV2::Authorizer
+    Properties:
+      ApiId: !Ref CivicNexusHttpApi
+      AuthorizerType: JWT
+      IdentitySource:
+        - '$request.header.Authorization'
+      Name: !Sub '${ProjectName}-cognito-authorizer'
+      JwtConfiguration:
+        Audience:
+          - !Ref CivicNexusUserPoolClient
+        Issuer: !Sub 'https://cognito-idp.${AWS::Region}.amazonaws.com/${CivicNexusUserPool}'
+
+  PublicSummaryRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref CivicNexusHttpApi
+      RouteKey: 'GET /public-summary'
+      Target: !Sub 'integrations/${CivicNexusApiIntegration}'
+
+  OperatorNotesRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref CivicNexusHttpApi
+      RouteKey: 'POST /operator-notes'
+      AuthorizationType: JWT
+      AuthorizerId: !Ref CivicNexusJwtAuthorizer
+      Target: !Sub 'integrations/${CivicNexusApiIntegration}'
+
+  CivicNexusDefaultStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref CivicNexusHttpApi
+      StageName: '$default'
+      AutoDeploy: true
+
+  CivicNexusLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref CivicNexusApiFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${CivicNexusHttpApi}/*/*'
+
+Outputs:
+  ServerlessApiUrl:
+    Description: Public API base URL for the 402-style serverless add-on.
+    Value: !GetAtt CivicNexusHttpApi.ApiEndpoint
+  PublicSummaryUrl:
+    Description: Public safe summary endpoint backed by Lambda and DynamoDB.
+    Value: !Sub '${CivicNexusHttpApi.ApiEndpoint}/public-summary'
+  OperatorNotesUrl:
+    Description: Authenticated operator notes endpoint.
+    Value: !Sub '${CivicNexusHttpApi.ApiEndpoint}/operator-notes'
+  DynamoDBTableName:
+    Description: DynamoDB table used by the Lambda API.
+    Value: !Ref CivicNexusServerlessTable
+  CognitoUserPoolId:
+    Description: Cognito user pool ID for Amplify Auth.
+    Value: !Ref CivicNexusUserPool
+  CognitoUserPoolClientId:
+    Description: Cognito user pool client ID for Amplify Auth.
+    Value: !Ref CivicNexusUserPoolClient
+  AmplifyEnvExample:
+    Description: Values to copy into frontend/.env.local before building the Amplify frontend.
+    Value: !Sub 'VITE_AWS_REGION=${AWS::Region} VITE_USER_POOL_ID=${CivicNexusUserPool} VITE_USER_POOL_CLIENT_ID=${CivicNexusUserPoolClient} VITE_API_BASE_URL=${CivicNexusHttpApi.ApiEndpoint}'

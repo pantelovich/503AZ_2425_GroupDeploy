@@ -30,6 +30,7 @@ Current secure target:
 6. Run MongoDB as a private replica set only if the final deploy proves it works.
 7. Keep lab-heavy evidence services disabled by default because AWS Academy blocks some IAM role creation.
 8. Treat the 402/S3 frontend as an extra after the secure stack works.
+9. Keep the 402 serverless add-on separate from the main secure stack so it does not destabilise the core coursework environment.
 
 Current branch position:
 
@@ -91,3 +92,4 @@ Evidence can be:
 | 2026-05-22 | Pantelis | Deployed the clean replica branch in the AWS lab with evidence services disabled because the lab blocks IAM role creation. |
 | 2026-05-26 | Pantelis | Deployed the web evidence stack, confirmed dashboard, health check, headers, IMDSv2 and private MongoDB path, then deleted the stack after saving evidence. |
 | 2026-05-26 | Pantelis | Added a public summary API and stronger browser policy headers as an extra web-layer control. |
+| 2026-05-26 | Pantelis | Started a separate 402-style serverless add-on using Amplify/Cognito, Lambda, API Gateway and DynamoDB. |
