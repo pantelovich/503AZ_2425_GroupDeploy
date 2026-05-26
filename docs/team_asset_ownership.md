@@ -46,6 +46,7 @@ Pantelis:
 3. `/health.php` testing.
 4. Web evidence.
 5. Final web/app wording for the Week 5 configuration document.
+6. Public summary API and browser policy headers.
 
 Mike:
 
@@ -89,3 +90,4 @@ Evidence can be:
 | 2026-05-22 | Pantelis | Disabled optional VDI by default and removed public RDP from the secure template. |
 | 2026-05-22 | Pantelis | Deployed the clean replica branch in the AWS lab with evidence services disabled because the lab blocks IAM role creation. |
 | 2026-05-26 | Pantelis | Deployed the web evidence stack, confirmed dashboard, health check, headers, IMDSv2 and private MongoDB path, then deleted the stack after saving evidence. |
+| 2026-05-26 | Pantelis | Added a public summary API and stronger browser policy headers as an extra web-layer control. |

@@ -92,12 +92,14 @@ echo "Checking dashboard HTTP response"
 HEADER_FILE="$OUT_DIR/${TODAY}_dashboard_http_headers.txt"
 HOME_FILE="$OUT_DIR/${TODAY}_dashboard_homepage.html"
 HEALTH_FILE="$OUT_DIR/${TODAY}_health_check.txt"
+API_FILE="$OUT_DIR/${TODAY}_public_summary_api.txt"
 CONTROL_CHECK_FILE="$OUT_DIR/${TODAY}_webserver_control_checks.txt"
 FINAL_NOTE_FILE="$OUT_DIR/${TODAY}_webserver_final_notes.md"
 
 curl -I --max-time 10 "http://$WEB_IP" > "$HEADER_FILE" || true
 curl --max-time 15 "http://$WEB_IP" > "$HOME_FILE" || true
 curl --max-time 10 "http://$WEB_IP/health.php" > "$HEALTH_FILE" || true
+curl --max-time 10 "http://$WEB_IP/api/public-summary.php" > "$API_FILE" || true
 
 {
   echo "Webserver control checks"
@@ -111,7 +113,9 @@ curl --max-time 10 "http://$WEB_IP/health.php" > "$HEALTH_FILE" || true
     "X-Content-Type-Options: nosniff" \
     "X-Frame-Options: DENY" \
     "Referrer-Policy: no-referrer" \
-    "Cache-Control: no-store"
+    "Cache-Control: no-store" \
+    "Content-Security-Policy:" \
+    "Permissions-Policy:"
   do
     if grep -qi "^$header" "$HEADER_FILE"; then
       echo "PASS - $header"
@@ -141,6 +145,20 @@ curl --max-time 10 "http://$WEB_IP/health.php" > "$HEALTH_FILE" || true
   else
     echo "CHECK - personnel summary heading not found"
   fi
+
+  echo
+  echo "Public API data minimisation:"
+  if grep -qi '"status":"ok"' "$API_FILE"; then
+    echo "PASS - public summary API returned ok"
+  else
+    echo "CHECK - public summary API did not return ok"
+  fi
+
+  if grep -qi '"personnel_records":"restricted"' "$API_FILE"; then
+    echo "PASS - public summary API marks personnel records as restricted"
+  else
+    echo "CHECK - public summary API restriction marker not found"
+  fi
 } > "$CONTROL_CHECK_FILE"
 
 cat > "$FINAL_NOTE_FILE" <<EOF
@@ -160,6 +178,7 @@ This is the webserver and dashboard evidence set.
 4. The HTTP response includes the agreed browser security headers.
 5. The web EC2 metadata setting uses IMDSv2.
 6. The dashboard does not show full personnel or operational records publicly.
+7. The public summary API returns only safe city data and marks restricted data clearly.
 
 ## Main evidence files
 
@@ -169,10 +188,11 @@ This is the webserver and dashboard evidence set.
 4. ${TODAY}_webserver_metadata_options.txt
 5. ${TODAY}_webserver_sg_rules.json
 6. ${TODAY}_webserver_control_checks.txt
+7. ${TODAY}_public_summary_api.txt
 
 ## Short report wording
 
-For my part, I focused on the webserver and PHP dashboard. I checked that the dashboard still works after the security changes, that the health endpoint can reach the database, and that the web response includes the expected hardening headers. I also checked the EC2 metadata setting and captured the webserver security group evidence.
+For my part, I focused on the webserver and PHP dashboard. I checked that the dashboard still works after the security changes, that the health endpoint can reach the database, and that the web response includes the expected hardening headers. I also added a small public summary API that returns only safe city data while keeping personnel and operational details restricted.
 EOF
 
 cat > "$OUT_DIR/${TODAY}_webserver_evidence_summary.md" <<EOF
@@ -203,6 +223,7 @@ Files collected:
 9. ${TODAY}_health_check.txt
 10. ${TODAY}_webserver_control_checks.txt
 11. ${TODAY}_webserver_final_notes.md
+12. ${TODAY}_public_summary_api.txt
 
 Manual screenshots still useful:
 

@@ -800,6 +800,8 @@ Resources:
           Header always set X-Frame-Options "DENY"
           Header always set Referrer-Policy "no-referrer"
           Header always set Cache-Control "no-store"
+          Header always set Content-Security-Policy "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; style-src 'self' 'unsafe-inline'"
+          Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
           <Directory "/var/www/html">
               Options -Indexes
           </Directory>
@@ -936,6 +938,74 @@ Resources:
                   'service' => 'civicnexus-dashboard',
                   'status' => 'degraded',
                   'database' => 'unreachable'
+              ]);
+          }
+          ?>
+          EOF
+
+          mkdir -p /var/www/html/api
+          cat <<'EOF' > /var/www/html/api/public-summary.php
+          <?php
+          ini_set('display_errors', 0);
+          ini_set('log_errors', 1);
+          header('Content-Type: application/json');
+          header('Cache-Control: no-store');
+
+          $mongoHosts = "${MongoEC2Instance.PrivateIp}:27017,${MongoReplicaInstance2.PrivateIp}:27017,${MongoReplicaInstance3.PrivateIp}:27017";
+          $mongoUser = "${MongoAppUsername}";
+          $mongoPassword = "${MongoAppPassword}";
+          $uri = "mongodb://" . rawurlencode($mongoUser) . ":" . rawurlencode($mongoPassword) . "@$mongoHosts/civicnexus?authSource=civicnexus&replicaSet=rs0";
+
+          function cleanTimestamp($value) {
+              if ($value instanceof MongoDB\BSON\UTCDateTime) {
+                  return $value->toDateTime()->format('Y-m-d H:i:s');
+              }
+              return $value ? (string) $value : null;
+          }
+
+          try {
+              require '/var/www/html/vendor/autoload.php';
+              $client = new MongoDB\Client($uri, [], [
+                  'serverSelectionTimeoutMS' => 2000,
+                  'connectTimeoutMS' => 2000
+              ]);
+              $db = $client->civicnexus;
+              $publicRecords = [];
+
+              foreach ($db->urban_environment_data->find([], [
+                  'projection' => [
+                      '_id' => 0,
+                      'record_id' => 1,
+                      'data_type' => 1,
+                      'location' => 1,
+                      'reading_value' => 1,
+                      'unit' => 1,
+                      'timestamp' => 1
+                  ],
+                  'limit' => 10
+              ]) as $doc) {
+                  $publicRecords[] = [
+                      'record_id' => $doc['record_id'] ?? null,
+                      'data_type' => $doc['data_type'] ?? null,
+                      'location' => $doc['location'] ?? null,
+                      'reading' => trim(($doc['reading_value'] ?? '') . ' ' . ($doc['unit'] ?? '')),
+                      'timestamp' => cleanTimestamp($doc['timestamp'] ?? null)
+                  ];
+              }
+
+              echo json_encode([
+                  'service' => 'civicnexus-public-summary',
+                  'status' => 'ok',
+                  'public_records' => $publicRecords,
+                  'personnel_records' => 'restricted',
+                  'operational_log_details' => 'restricted'
+              ]);
+          } catch (Exception $e) {
+              error_log("Public summary API error: " . $e->getMessage());
+              http_response_code(503);
+              echo json_encode([
+                  'service' => 'civicnexus-public-summary',
+                  'status' => 'degraded'
               ]);
           }
           ?>

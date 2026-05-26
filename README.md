@@ -25,8 +25,10 @@ The secure stack currently focuses on:
 - web dashboard data minimisation
 - PHP error handling
 - Apache security headers
+- browser policy headers, including CSP and Permissions-Policy
 - IMDSv2 on the web EC2 instance
 - web health check with MongoDB reachability
+- public summary API that exposes only safe city data
 - MongoDB placed in a private subnet with no public IP
 - MongoDB `27017` restricted to the webserver security group
 - MongoDB bound only to localhost and its private VPC IP
@@ -73,6 +75,7 @@ For Pantelis' web/app evidence, the useful checks are:
 4. EC2 metadata options require IMDSv2
 5. dashboard shows restricted public data instead of raw personnel records
 6. web security group only exposes the required lab web port
+7. public summary API returns only safe city data and marks sensitive records as restricted
 
 ## Lab Credit Check
 
