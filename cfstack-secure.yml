@@ -250,7 +250,7 @@ Resources:
           CidrIp: !Ref AdminAccessCidr
       Tags:
         - Key: Name
-          Value: !Sub 'openVPN_SG_shared_${GroupName}'
+          Value: !Sub 'openVPN_SG_mike_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -290,7 +290,7 @@ Resources:
           chown ec2-user:ec2-user /home/ec2-user/README_openvpn.txt
       Tags:
         - Key: Name
-          Value: !Sub 'openVPN_EC2_shared_${GroupName}'
+          Value: !Sub 'openVPN_EC2_mike_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -301,7 +301,7 @@ Resources:
       Domain: vpc
       Tags:
         - Key: Name
-          Value: !Sub 'openVPN_EIP_shared_${GroupName}'
+          Value: !Sub 'openVPN_EIP_mike_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
