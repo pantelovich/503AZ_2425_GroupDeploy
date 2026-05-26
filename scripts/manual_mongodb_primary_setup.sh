@@ -26,7 +26,7 @@ if [ -z "$ADMIN_PASSWORD" ] || [ -z "$APP_PASSWORD" ]; then
 fi
 
 for host in "$PRIMARY_IP" "$SECONDARY_1_IP" "$SECONDARY_2_IP"; do
-  for attempt in {1..30}; do
+  for _attempt in {1..30}; do
     if timeout 2 bash -c "</dev/tcp/${host}/27017" >/dev/null 2>&1; then
       break
     fi
@@ -36,7 +36,7 @@ done
 
 mongosh "mongodb://${PRIMARY_IP}:27017/admin" --quiet --eval "rs.initiate({_id:'rs0',members:[{_id:0,host:'${PRIMARY_IP}:27017',priority:2},{_id:1,host:'${SECONDARY_1_IP}:27017'},{_id:2,host:'${SECONDARY_2_IP}:27017'}]})" || true
 
-for attempt in {1..30}; do
+for _attempt in {1..30}; do
   if mongosh "mongodb://${PRIMARY_IP}:27017/admin?replicaSet=rs0" --quiet --eval 'db.hello().isWritablePrimary' | grep -q true; then
     break
   fi

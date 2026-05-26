@@ -101,10 +101,10 @@ key-direction 1
 $(sudo cat /etc/openvpn/client-config/ca.crt)
 </ca>
 <cert>
-$(sudo cat /etc/openvpn/client-config/${CLIENT_NAME}.crt)
+$(sudo cat "/etc/openvpn/client-config/${CLIENT_NAME}.crt")
 </cert>
 <key>
-$(sudo cat /etc/openvpn/client-config/${CLIENT_NAME}.key)
+$(sudo cat "/etc/openvpn/client-config/${CLIENT_NAME}.key")
 </key>
 <tls-auth>
 $(sudo cat /etc/openvpn/client-config/ta.key)
