@@ -28,7 +28,9 @@ jobs:
       - name: Check shell script syntax
         run: |
           bash -n scripts/collect_database_evidence.sh
+          bash -n scripts/collect_network_audit_evidence.sh
           bash -n scripts/collect_webserver_evidence.sh
+          bash -n scripts/list_lab_resources.sh
           bash -n scripts/update_lab_credentials.sh
 
       - name: Run ShellCheck

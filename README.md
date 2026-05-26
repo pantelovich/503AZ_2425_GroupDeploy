@@ -32,12 +32,14 @@ The secure stack currently focuses on:
 - MongoDB bound only to localhost and its private VPC IP
 - NAT Gateway for private subnet outbound setup access
 - local database seeding during secure stack bootstrap
-- MongoDB backup and restore check, with backup output stored in an encrypted S3 bucket
-- VPC Flow Logs to CloudWatch Logs for accepted and rejected traffic evidence
+- optional MongoDB backup evidence support, where the lab allows the needed IAM/S3 setup
+- optional VPC Flow Logs support for accepted and rejected traffic evidence
+
+The latest Pantelis webserver evidence was collected on 2026-05-26 from stack `pantelis-week5-web-evidence`. The stack was deleted after evidence was saved to avoid wasting AWS Academy lab credit.
 
 ## Deploy
 
-Deployment is done through GitHub Actions.
+Deployment can be done through GitHub Actions or manually in CloudFormation.
 
 Use the manual workflow and select:
 
@@ -63,6 +65,15 @@ scripts/collect_network_audit_evidence.sh <stack-name> <output-folder>
 
 Do not commit evidence dumps, screenshots, credentials, or private keys to this repository.
 
+For Pantelis' web/app evidence, the useful checks are:
+
+1. dashboard page returns HTTP 200
+2. `/health.php` returns `status: ok` and `database: reachable`
+3. HTTP response includes the security headers
+4. EC2 metadata options require IMDSv2
+5. dashboard shows restricted public data instead of raw personnel records
+6. web security group only exposes the required lab web port
+
 ## Lab Credit Check
 
 Before finishing a work session, check what is still running:
@@ -75,4 +86,4 @@ Keep the current evidence stack only while testing or collecting evidence. Delet
 
 The secure stack creates a NAT Gateway so the private MongoDB instance can download packages during setup. NAT Gateway can use AWS lab credit quickly, so delete the secure stack after evidence is saved.
 
-The MongoDB backup bucket is retained so the backup evidence is not removed when the stack is deleted. Empty and delete that bucket manually after the evidence is no longer needed.
+If the optional MongoDB backup bucket is created, it is retained so backup evidence is not removed when the stack is deleted. Empty and delete that bucket manually after the evidence is no longer needed.

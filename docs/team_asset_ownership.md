@@ -2,7 +2,7 @@
 
 Short note on who covered what.
 
-Last updated: 2026-05-22
+Last updated: 2026-05-26
 
 ## Ownership
 
@@ -31,6 +31,12 @@ Current secure target:
 7. Keep lab-heavy evidence services disabled by default because AWS Academy blocks some IAM role creation.
 8. Treat the 402/S3 frontend as an extra after the secure stack works.
 
+Current branch position:
+
+1. `week6-replica-cleanup` is the clean working base.
+2. Pantelis' web/app side has working deployment evidence from 2026-05-26.
+3. Mike's latest database branch still needs review before merge because it adds public endpoint changes.
+
 ## Current Work
 
 Pantelis:
@@ -39,6 +45,7 @@ Pantelis:
 2. PHP dashboard security.
 3. `/health.php` testing.
 4. Web evidence.
+5. Final web/app wording for the Week 5 configuration document.
 
 Mike:
 
@@ -53,6 +60,7 @@ Shared:
 1. Final deploy.
 2. Final screenshots.
 3. Report evidence table.
+4. Decide which optional extras are kept in CloudFormation and which stay as manual evidence.
 
 ## Evidence Rule
 
@@ -80,3 +88,4 @@ Evidence can be:
 | 2026-05-22 | Pantelis / Mike | Brought in the useful MongoDB replica set work on a clean branch, without OpenVPN. |
 | 2026-05-22 | Pantelis | Disabled optional VDI by default and removed public RDP from the secure template. |
 | 2026-05-22 | Pantelis | Deployed the clean replica branch in the AWS lab with evidence services disabled because the lab blocks IAM role creation. |
+| 2026-05-26 | Pantelis | Deployed the web evidence stack, confirmed dashboard, health check, headers, IMDSv2 and private MongoDB path, then deleted the stack after saving evidence. |
