@@ -64,7 +64,7 @@ Resources:
       EnableDnsHostnames: true
       Tags:
         - Key: Name
-          Value: !Sub 'vpc_${GroupName}'
+          Value: !Sub 'vpc_shared_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -90,7 +90,7 @@ Resources:
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: !Sub 'public1_${GroupName}'
+          Value: !Sub 'public1_shared_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -103,7 +103,7 @@ Resources:
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: !Sub 'public2_${GroupName}'
+          Value: !Sub 'public2_shared_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -115,7 +115,7 @@ Resources:
       AvailabilityZone: !Select [0, !GetAZs '']
       Tags:
         - Key: Name
-          Value: !Sub 'private1_${GroupName}'
+          Value: !Sub 'private1_shared_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -127,7 +127,7 @@ Resources:
       AvailabilityZone: !Select [1, !GetAZs '']
       Tags:
         - Key: Name
-          Value: !Sub 'private2_${GroupName}'
+          Value: !Sub 'private2_shared_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -139,7 +139,7 @@ Resources:
       AvailabilityZone: !Select [2, !GetAZs '']
       Tags:
         - Key: Name
-          Value: !Sub 'private3_${GroupName}'
+          Value: !Sub 'private3_shared_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
   
@@ -149,7 +149,7 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Sub 'publicRT_${GroupName}'
+          Value: !Sub 'publicRT_shared_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -179,7 +179,7 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Sub 'privateRT_${GroupName}'
+          Value: !Sub 'privateRT_shared_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -190,7 +190,7 @@ Resources:
       Domain: vpc
       Tags:
         - Key: Name
-          Value: !Sub 'natIP_${GroupName}'
+          Value: !Sub 'natIP_shared_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -201,7 +201,7 @@ Resources:
       SubnetId: !Ref PublicSubnet1
       Tags:
         - Key: Name
-          Value: !Sub 'natGW_${GroupName}'
+          Value: !Sub 'natGW_shared_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -250,7 +250,7 @@ Resources:
           CidrIp: !Ref AdminAccessCidr
       Tags:
         - Key: Name
-          Value: !Sub 'openVPN_SG_${GroupName}'
+          Value: !Sub 'openVPN_SG_shared_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -290,7 +290,7 @@ Resources:
           chown ec2-user:ec2-user /home/ec2-user/README_openvpn.txt
       Tags:
         - Key: Name
-          Value: !Sub 'openVPN_EC2_${GroupName}'
+          Value: !Sub 'openVPN_EC2_shared_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -301,7 +301,7 @@ Resources:
       Domain: vpc
       Tags:
         - Key: Name
-          Value: !Sub 'openVPN_EIP_${GroupName}'
+          Value: !Sub 'openVPN_EIP_shared_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -318,7 +318,7 @@ Resources:
       RetentionInDays: 7
       Tags:
         - Key: Name
-          Value: !Sub 'flowLogs_${GroupName}'
+          Value: !Sub 'flowLogs_shared_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -364,7 +364,7 @@ Resources:
       TrafficType: ALL
       Tags:
         - Key: Name
-          Value: !Sub 'vpcFlow_${GroupName}'
+          Value: !Sub 'vpcFlow_shared_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -390,7 +390,7 @@ Resources:
             ExpirationInDays: 7
       Tags:
         - Key: Name
-          Value: !Sub 'mongoBackups_${GroupName}'
+          Value: !Sub 'mongoBackups_mike_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -440,7 +440,7 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Sub 'mongo_SG_${GroupName}'
+          Value: !Sub 'mongo_SG_mike_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -528,7 +528,7 @@ Resources:
           chown ec2-user:ec2-user /home/ec2-user/README_mongo.txt
       Tags:
         - Key: Name
-          Value: !Sub 'mongo1_${GroupName}'
+          Value: !Sub 'mongo1_mike_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -573,7 +573,7 @@ Resources:
           chown ec2-user:ec2-user /home/ec2-user/README_mongo.txt
       Tags:
         - Key: Name
-          Value: !Sub 'mongo2_${GroupName}'
+          Value: !Sub 'mongo2_mike_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -618,7 +618,7 @@ Resources:
           chown ec2-user:ec2-user /home/ec2-user/README_mongo.txt
       Tags:
         - Key: Name
-          Value: !Sub 'mongo3_${GroupName}'
+          Value: !Sub 'mongo3_mike_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
           
@@ -637,7 +637,7 @@ Resources:
           CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
-          Value: !Sub 'web_SG_${GroupName}'
+          Value: !Sub 'web_SG_pantelis_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
           
@@ -866,7 +866,7 @@ Resources:
           systemctl restart httpd
       Tags:
         - Key: Name
-          Value: !Sub 'web_EC2_${GroupName}'
+          Value: !Sub 'web_EC2_pantelis_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -877,7 +877,7 @@ Resources:
       Domain: vpc
       Tags:
         - Key: Name
-          Value: !Sub 'web_EIP_${GroupName}'
+          Value: !Sub 'web_EIP_pantelis_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -903,7 +903,7 @@ Resources:
           CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
-          Value: !Sub 'vdi_SG_${GroupName}'
+          Value: !Sub 'vdi_SG_shared_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -922,7 +922,7 @@ Resources:
             - !Ref VDISecurityGroup
       Tags:
         - Key: Name
-          Value: !Sub 'vdi_EC2_${GroupName}'
+          Value: !Sub 'vdi_EC2_shared_${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
           
