@@ -20,6 +20,19 @@ Last updated: 2026-05-26
 
 We only claim controls when we have evidence.
 
+For Mike next session:
+
+1. Pantelis pushed `pantelis/402-serverless-addon`.
+2. This is separate from the main EC2/MongoDB secure stack.
+3. It adds the 402-style extra: Amplify frontend, Cognito login, API Gateway, Lambda and DynamoDB.
+4. It deployed successfully as `pantelis-402-serverless-addon`.
+5. The public API returned real DynamoDB data.
+6. Evidence is in OneDrive:
+   `503AZ Shared Work/Evidence/Raw AWS Output/2026-05-26_402_serverless/`
+   and
+   `503AZ Shared Work/Evidence/Screenshots/2026-05-26_402_serverless/`
+7. Do not merge this into the main secure stack yet. Review it first and keep the core coursework stack stable.
+
 Current secure target:
 
 1. Keep the web/app layer public.
@@ -93,3 +106,4 @@ Evidence can be:
 | 2026-05-26 | Pantelis | Deployed the web evidence stack, confirmed dashboard, health check, headers, IMDSv2 and private MongoDB path, then deleted the stack after saving evidence. |
 | 2026-05-26 | Pantelis | Added a public summary API and stronger browser policy headers as an extra web-layer control. |
 | 2026-05-26 | Pantelis | Started a separate 402-style serverless add-on using Amplify/Cognito, Lambda, API Gateway and DynamoDB. |
+| 2026-05-26 | Pantelis | Pushed `pantelis/402-serverless-addon`, deployed it, tested the Lambda/DynamoDB public summary endpoint and saved frontend evidence. |
