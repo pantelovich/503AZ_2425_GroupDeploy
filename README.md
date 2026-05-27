@@ -31,12 +31,15 @@ The secure stack currently focuses on:
 - IMDSv2 on the web EC2 instance
 - web health check with MongoDB reachability
 - public summary API that exposes only safe city data
+- application database credentials stored outside the public web root
 - MongoDB placed in a private subnet with no public IP
 - MongoDB `27017` restricted to the webserver security group
 - MongoDB bound only to localhost and its private VPC IP
+- explicit outbound security group rules for web, VPN, and MongoDB setup traffic
 - NAT Gateway for private subnet outbound setup access
 - local database seeding during secure stack bootstrap
-- optional MongoDB backup evidence support, where the lab allows the needed IAM/S3 setup
+- MongoDB backup bucket encryption, versioning, public access blocking, and HTTPS-only bucket policy
+- optional MongoDB backup upload evidence support, where the lab allows the needed IAM/S3 setup
 - optional VPC Flow Logs support for accepted and rejected traffic evidence
 - optional 402-style serverless add-on with Amplify/Cognito, Lambda and DynamoDB
 
