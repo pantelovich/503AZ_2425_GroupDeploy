@@ -42,14 +42,12 @@ textarea {
   line-height: 1;
 }
 
-.service-chain,
 .meta-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.service-chain span,
 .meta-row span {
   border: 1px solid #cbd5df;
   border-radius: 6px;
@@ -58,12 +56,6 @@ textarea {
   font-size: 0.85rem;
   line-height: 1;
   padding: 8px 10px;
-}
-
-.service-chain span {
-  border-color: rgba(255, 255, 255, 0.28);
-  background: rgba(255, 255, 255, 0.08);
-  color: #f4fbfd;
 }
 
 .workspace {

@@ -79,13 +79,6 @@ function App() {
           <p className="eyebrow">CivicNexus serverless add-on</p>
           <h1>Operator console</h1>
         </div>
-        <div className="service-chain" aria-label="serverless services used">
-          <span>React</span>
-          <span>API Gateway</span>
-          <span>Lambda</span>
-          <span>DynamoDB</span>
-          <span>Cognito</span>
-        </div>
       </header>
 
       <section className="workspace">
