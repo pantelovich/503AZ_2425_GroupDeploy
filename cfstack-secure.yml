@@ -298,6 +298,8 @@ Resources:
       MetadataOptions:
         HttpTokens: required
         HttpEndpoint: enabled
+        HttpPutResponseHopLimit: 1
+        InstanceMetadataTags: disabled
       NetworkInterfaces:
         - AssociatePublicIpAddress: true
           DeviceIndex: 0
@@ -305,6 +307,12 @@ Resources:
           GroupSet:
             - !Ref OpenVPNSecurityGroup
       ImageId: ami-00ca32bbc84273381 # Amazon Linux 2023
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            Encrypted: true
+            VolumeType: gp3
+            DeleteOnTermination: true
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
@@ -575,9 +583,17 @@ Resources:
       MetadataOptions:
         HttpTokens: required
         HttpEndpoint: enabled
+        HttpPutResponseHopLimit: 1
+        InstanceMetadataTags: disabled
       SecurityGroupIds:
         - !Ref MongoSecurityGroup
       ImageId: ami-00ca32bbc84273381 # Amazon Linux 2023
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            Encrypted: true
+            VolumeType: gp3
+            DeleteOnTermination: true
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
@@ -790,9 +806,17 @@ Resources:
       MetadataOptions:
         HttpTokens: required
         HttpEndpoint: enabled
+        HttpPutResponseHopLimit: 1
+        InstanceMetadataTags: disabled
       SecurityGroupIds:
         - !Ref MongoSecurityGroup
       ImageId: ami-00ca32bbc84273381 # Amazon Linux 2023
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            Encrypted: true
+            VolumeType: gp3
+            DeleteOnTermination: true
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
@@ -846,9 +870,17 @@ Resources:
       MetadataOptions:
         HttpTokens: required
         HttpEndpoint: enabled
+        HttpPutResponseHopLimit: 1
+        InstanceMetadataTags: disabled
       SecurityGroupIds:
         - !Ref MongoSecurityGroup
       ImageId: ami-00ca32bbc84273381 # Amazon Linux 2023
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            Encrypted: true
+            VolumeType: gp3
+            DeleteOnTermination: true
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
@@ -934,9 +966,17 @@ Resources:
       MetadataOptions:
         HttpTokens: required
         HttpEndpoint: enabled
+        HttpPutResponseHopLimit: 1
+        InstanceMetadataTags: disabled
       SecurityGroupIds:
         - !Ref WebServerSecurityGroup
       ImageId: ami-00ca32bbc84273381 # Amazon Linux 2023
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            Encrypted: true
+            VolumeType: gp3
+            DeleteOnTermination: true
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
@@ -1399,8 +1439,16 @@ Resources:
       MetadataOptions:
         HttpTokens: required
         HttpEndpoint: enabled
+        HttpPutResponseHopLimit: 1
+        InstanceMetadataTags: disabled
       SecurityGroupIds:
         - !Ref VDISecurityGroup
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            Encrypted: true
+            VolumeType: gp3
+            DeleteOnTermination: true
       Tags:
         - Key: Name
           Value: !Sub 'civicnexus-vdi-instance-${GroupName}'
