@@ -74,51 +74,66 @@ function App() {
 
   return (
     <main className="shell">
-      <section className="masthead">
-        <p className="eyebrow">CivicNexus serverless add-on</p>
-        <h1>Operator dashboard</h1>
-        <p>
-          Public city signals stay readable. Personnel and operational details stay restricted.
-        </p>
-      </section>
-
-      <section className="panel grid">
+      <header className="topbar">
         <div>
-          <h2>Public data from Lambda and DynamoDB</h2>
+          <p className="eyebrow">CivicNexus serverless add-on</p>
+          <h1>Operator console</h1>
+        </div>
+        <div className="service-chain" aria-label="serverless services used">
+          <span>React</span>
+          <span>API Gateway</span>
+          <span>Lambda</span>
+          <span>DynamoDB</span>
+          <span>Cognito</span>
+        </div>
+      </header>
+
+      <section className="workspace">
+        <div className="data-panel">
+          <div className="section-title">
+            <h2>Public city data</h2>
+            <p>Operational signals only. Personnel and detailed logs stay restricted.</p>
+          </div>
           {error && <p className="status error">{error}</p>}
           {!summary && !error && <p className="status">Loading live summary...</p>}
           {summary && (
             <>
               <div className="meta-row">
-                <span>{summary.status}</span>
-                <span>{summary.source}</span>
-                <span>personnel: {summary.personnel_records}</span>
+                <span>API: {summary.status}</span>
+                <span>Source: {summary.source}</span>
+                <span>Personnel: {summary.personnel_records}</span>
               </div>
               <div className="records">
                 {summary.public_records.map((record) => (
-                  <article className="record" key={record.id}>
-                    <strong>{record.location}</strong>
-                    <span>{record.dataType}</span>
+                  <div className="record" key={record.id}>
+                    <div>
+                      <strong>{record.location}</strong>
+                      <small>{record.id}</small>
+                    </div>
+                    <span>{record.dataType.replace(/_/g, ' ')}</span>
                     <b>{record.reading}</b>
-                    <small>{record.timestamp}</small>
-                  </article>
+                    <time>{record.timestamp}</time>
+                  </div>
                 ))}
               </div>
             </>
           )}
         </div>
 
-        <div className="auth-box">
-          <h2>Authenticated operator note</h2>
+        <aside className="operator-panel">
+          <div className="section-title">
+            <h2>Operator note</h2>
+            <p>Cognito sign-in required before a note can be stored.</p>
+          </div>
           <Authenticator>
-            {({ signOut, user }) => (
+            {({ signOut }) => (
               <div className="operator-form">
-                <p className="status">Signed in as {user?.signInDetails?.loginId || 'operator'}</p>
+                <p className="status">Signed in. Notes are written to DynamoDB.</p>
                 <textarea
                   value={note}
                   onChange={(event) => setNote(event.target.value)}
                   maxLength={500}
-                  placeholder="Write a short operational note for the evidence test."
+                  placeholder="Write a short operator note."
                 />
                 <div className="actions">
                   <button onClick={saveOperatorNote}>Save note</button>
@@ -128,7 +143,7 @@ function App() {
               </div>
             )}
           </Authenticator>
-        </div>
+        </aside>
       </section>
     </main>
   );

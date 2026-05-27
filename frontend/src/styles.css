@@ -1,6 +1,6 @@
 :root {
   color: #111827;
-  background: #eef3f7;
+  background: #edf2f6;
   font-family: Avenir Next, Avenir, Helvetica, sans-serif;
 }
 
@@ -17,117 +17,143 @@ textarea {
   min-height: 100vh;
 }
 
-.masthead {
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px clamp(18px, 4vw, 52px);
   background: #0f3b4a;
   color: white;
-  padding: 48px clamp(20px, 6vw, 72px);
 }
 
 .eyebrow {
-  margin: 0 0 12px;
-  color: #93e1d8;
-  font-size: 0.85rem;
+  margin: 0 0 6px;
+  color: #a7dde2;
+  font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
 }
 
-.masthead h1 {
-  max-width: 720px;
+.topbar h1 {
   margin: 0;
-  font-size: clamp(2.4rem, 6vw, 5.4rem);
-  line-height: 0.95;
+  font-size: clamp(1.6rem, 3vw, 2.35rem);
+  line-height: 1;
 }
 
-.masthead p {
-  max-width: 620px;
-  margin: 20px 0 0;
-  color: #dce9ee;
-  font-size: 1.1rem;
-}
-
-.panel {
-  padding: clamp(20px, 5vw, 60px);
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.8fr);
-  gap: 28px;
-}
-
-h2 {
-  margin: 0 0 18px;
-  font-size: 1.2rem;
-}
-
+.service-chain,
 .meta-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 18px;
 }
 
+.service-chain span,
 .meta-row span {
-  padding: 8px 10px;
-  background: white;
-  border: 1px solid #d5dde5;
+  border: 1px solid #cbd5df;
   border-radius: 6px;
-  font-size: 0.9rem;
+  background: white;
+  color: #253141;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 8px 10px;
+}
+
+.service-chain span {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f4fbfd;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.75fr);
+  gap: 28px;
+  padding: clamp(18px, 4vw, 52px);
+}
+
+.section-title {
+  margin-bottom: 16px;
+}
+
+.section-title h2 {
+  margin: 0;
+  font-size: 1.12rem;
+}
+
+.section-title p {
+  max-width: 620px;
+  margin: 6px 0 0;
+  color: #5b6674;
 }
 
 .records {
   display: grid;
-  gap: 14px;
-}
-
-.record,
-.auth-box {
-  background: white;
-  border: 1px solid #d5dde5;
-  border-radius: 8px;
-  box-shadow: 0 16px 34px rgba(25, 44, 58, 0.08);
+  gap: 10px;
+  margin-top: 16px;
 }
 
 .record {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
-  gap: 12px;
+  grid-template-columns: minmax(220px, 1.4fr) minmax(160px, 0.9fr) minmax(110px, auto) minmax(155px, auto);
   align-items: center;
-  padding: 16px;
+  gap: 16px;
+  min-height: 66px;
+  padding: 12px 16px;
+  background: white;
+  border: 1px solid #d4dde6;
+  border-radius: 7px;
 }
 
-.record span,
-.record small,
-.status {
-  color: #5c6875;
-}
-
+.record strong,
 .record b {
-  color: #0f3b4a;
+  color: #102c3a;
 }
 
-.auth-box {
-  padding: 20px;
+.record small,
+.record span,
+.record time,
+.status {
+  color: #5b6674;
+}
+
+.record small {
+  display: block;
+  margin-top: 4px;
+}
+
+.record time {
+  justify-self: end;
+  white-space: nowrap;
+}
+
+.operator-panel {
+  min-width: 0;
 }
 
 .operator-form {
   display: grid;
-  gap: 14px;
+  gap: 12px;
+  padding: 18px;
+  background: white;
+  border: 1px solid #d4dde6;
+  border-radius: 7px;
 }
 
-textarea {
+.operator-form textarea {
   width: 100%;
-  min-height: 120px;
+  min-height: 112px;
   box-sizing: border-box;
   padding: 12px;
-  border: 1px solid #c7d2dc;
+  border: 1px solid #bdc9d5;
   border-radius: 6px;
   resize: vertical;
 }
 
 .actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -141,7 +167,7 @@ button {
 }
 
 button.secondary {
-  background: #dce4ea;
+  background: #d8e1e8;
   color: #111827;
 }
 
@@ -149,12 +175,22 @@ button.secondary {
   color: #a21c2b;
 }
 
-@media (max-width: 860px) {
-  .grid {
+@media (max-width: 940px) {
+  .topbar,
+  .workspace {
     grid-template-columns: 1fr;
+  }
+
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .record {
     grid-template-columns: 1fr;
+  }
+
+  .record time {
+    justify-self: start;
   }
 }
