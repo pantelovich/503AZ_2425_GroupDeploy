@@ -316,7 +316,7 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
-          set -xe
+          set -euo pipefail
 
           dnf update -y
           dnf install -y openvpn iptables-services openssl
@@ -597,7 +597,7 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
-          set -xe
+          set -euo pipefail
 
           cat <<'EOF' > /etc/yum.repos.d/mongodb-org-7.0.repo
           [mongodb-org-7.0]
@@ -820,7 +820,7 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
-          set -xe
+          set -euo pipefail
 
           cat <<'EOF' > /etc/yum.repos.d/mongodb-org-7.0.repo
           [mongodb-org-7.0]
@@ -884,7 +884,7 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
-          set -xe
+          set -euo pipefail
 
           cat <<'EOF' > /etc/yum.repos.d/mongodb-org-7.0.repo
           [mongodb-org-7.0]
@@ -980,7 +980,7 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
-          set -xe
+          set -euo pipefail
         
           # Update packages
           dnf update -y
