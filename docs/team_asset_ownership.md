@@ -22,16 +22,45 @@ We only claim controls when we have evidence.
 
 For Mike next session:
 
-1. Pantelis pushed `pantelis/402-serverless-addon`.
-2. This is separate from the main EC2/MongoDB secure stack.
-3. It adds the 402-style extra: Amplify frontend, Cognito login, API Gateway, Lambda and DynamoDB.
-4. It deployed successfully as `pantelis-402-serverless-addon`.
-5. The public API returned real DynamoDB data.
-6. Evidence is in OneDrive:
-   `503AZ Shared Work/Evidence/Raw AWS Output/2026-05-26_402_serverless/`
-   and
-   `503AZ Shared Work/Evidence/Screenshots/2026-05-26_402_serverless/`
-7. Do not merge this into the main secure stack yet. Review it first and keep the core coursework stack stable.
+1. Work from `week6-final-integration`.
+2. Dan wants one database only, so final 402 work must use MongoDB, not DynamoDB.
+3. Pantelis already built the 402-style add-on path:
+   - `cfstack-402-serverless.yml`
+   - `frontend/`
+   - Cognito user pool
+   - API Gateway HTTP API
+   - JWT authorizer
+   - Lambda
+4. Mike's task is to convert the 402 data path from DynamoDB to the existing private MongoDB stack.
+5. Keep Cognito, API Gateway, JWT authorizer and the frontend login flow.
+6. Remove DynamoDB only after the MongoDB path works.
+7. Do not merge `mike/database-work` directly. Copy only the needed changes into `week6-final-integration`.
+
+MongoDB conversion rules for Mike:
+
+1. Read `cfstack-secure.yml` first.
+2. Reuse the existing MongoDB replica set:
+   - `10.0.10.10:27017`
+   - `10.0.11.10:27017`
+   - `10.0.12.10:27017`
+   - replica set: `rs0`
+   - database: `civicnexus`
+3. Do not make MongoDB public.
+4. Do not create a second database service.
+5. Do not use DynamoDB in the final version.
+6. API routes should prove Dan's video pattern:
+   - missing token is rejected
+   - valid Cognito JWT is accepted
+   - API reads or writes MongoDB
+7. Keep public safe data separate from restricted data.
+8. Do not expose personnel details or raw operational logs through a public route.
+9. If Lambda talks directly to MongoDB, it must run inside the VPC private path and have security group access to MongoDB on port 27017.
+10. If Lambda is used, remember the MongoDB driver is not built into Node.js Lambda. A real implementation needs either:
+    - a packaged Lambda zip with the MongoDB driver, or
+    - a Lambda layer containing the driver, or
+    - a simpler API Gateway/Cognito front path that calls an EC2/PHP MongoDB endpoint already using Composer.
+11. Do not leave fake imports like `require("mongodb")` in inline Lambda code unless the dependency is actually packaged.
+12. Push after each small working milestone so Pantelis can review.
 
 Integration update:
 
