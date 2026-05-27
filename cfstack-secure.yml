@@ -84,6 +84,8 @@ Resources:
           Value: !Sub 'civicnexus-vpc-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
+        - Key: Owner
+          Value: Shared
 
   InternetGateway:
     Type: 'AWS::EC2::InternetGateway'
@@ -91,6 +93,8 @@ Resources:
       Tags:
         - Key: GroupName
           Value: !Ref GroupName
+        - Key: Owner
+          Value: Shared
 
   AttachGateway:
     Type: 'AWS::EC2::VPCGatewayAttachment'
@@ -110,6 +114,8 @@ Resources:
           Value: !Sub 'civicnexus-public-subnet-1-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
+        - Key: Owner
+          Value: Shared
 
   PublicSubnet2:
     Type: 'AWS::EC2::Subnet'
@@ -123,6 +129,8 @@ Resources:
           Value: !Sub 'civicnexus-public-subnet-2-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
+        - Key: Owner
+          Value: Shared
 
   PrivateSubnet1:
     Type: 'AWS::EC2::Subnet'
@@ -135,6 +143,8 @@ Resources:
           Value: !Sub 'civicnexus-private-subnet-1-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
+        - Key: Owner
+          Value: Shared
 
   PrivateSubnet2:
     Type: 'AWS::EC2::Subnet'
@@ -147,6 +157,8 @@ Resources:
           Value: !Sub 'civicnexus-private-subnet-2-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
+        - Key: Owner
+          Value: Shared
 
   PrivateSubnet3:
     Type: 'AWS::EC2::Subnet'
@@ -159,6 +171,8 @@ Resources:
           Value: !Sub 'civicnexus-private-subnet-3-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
+        - Key: Owner
+          Value: Shared
   
   PublicRouteTable:
     Type: 'AWS::EC2::RouteTable'
@@ -169,6 +183,8 @@ Resources:
           Value: !Sub 'civicnexus-public-rt-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
+        - Key: Owner
+          Value: Shared
 
   DefaultPublicRoute:
     Type: 'AWS::EC2::Route'
@@ -199,6 +215,8 @@ Resources:
           Value: !Sub 'civicnexus-private-rt-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
+        - Key: Owner
+          Value: Shared
 
   NatGatewayElasticIP:
     Type: AWS::EC2::EIP
@@ -210,6 +228,8 @@ Resources:
           Value: !Sub 'civicnexus-nat-eip-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
+        - Key: Owner
+          Value: Shared
 
   NatGateway:
     Type: AWS::EC2::NatGateway
@@ -221,6 +241,8 @@ Resources:
           Value: !Sub 'civicnexus-nat-gateway-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
+        - Key: Owner
+          Value: Shared
 
   PrivateDefaultRoute:
     Type: AWS::EC2::Route
@@ -286,6 +308,8 @@ Resources:
           Value: !Sub 'civicnexus-openvpn-sg-mike-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
+        - Key: Owner
+          Value: Mike
 
   OpenVPNInstance:
     Type: 'AWS::EC2::Instance'
@@ -335,6 +359,8 @@ Resources:
           Value: !Sub 'civicnexus-openvpn-ec2-mike-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
+        - Key: Owner
+          Value: Mike
 
   OpenVPNElasticIP:
     Type: AWS::EC2::EIP
@@ -347,6 +373,8 @@ Resources:
           Value: !Sub 'civicnexus-openvpn-eip-mike-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
+        - Key: Owner
+          Value: Mike
 
   OpenVPNElasticIPAssociation:
     Type: AWS::EC2::EIPAssociation
@@ -365,6 +393,8 @@ Resources:
           Value: !Sub 'civicnexus-vpc-flow-logs-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
+        - Key: Owner
+          Value: Shared
 
   VpcFlowLogsRole:
     Type: AWS::IAM::Role
@@ -411,6 +441,8 @@ Resources:
           Value: !Sub 'civicnexus-vpc-flow-log-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
+        - Key: Owner
+          Value: Shared
 
   MongoBackupBucket:
     Type: AWS::S3::Bucket
@@ -438,6 +470,8 @@ Resources:
           Value: !Sub 'civicnexus-mongodb-backups-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
+        - Key: Owner
+          Value: Mike
 
   MongoBackupBucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -485,6 +519,8 @@ Resources:
       Tags:
         - Key: GroupName
           Value: !Ref GroupName
+        - Key: Owner
+          Value: Mike
 
   MongoBackupInstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -519,6 +555,8 @@ Resources:
           Value: !Sub 'civicnexus-mongodb-sg-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
+        - Key: Owner
+          Value: Mike
 
   MongoIngressFromWebServer:
     Type: 'AWS::EC2::SecurityGroupIngress'
@@ -792,6 +830,8 @@ Resources:
           Value: !Sub 'civicnexus-mongodb-1-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
+        - Key: Owner
+          Value: Mike
 
   MongoReplicaInstance2:
     Type: 'AWS::EC2::Instance'
@@ -856,6 +896,8 @@ Resources:
           Value: !Sub 'civicnexus-mongodb-2-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
+        - Key: Owner
+          Value: Mike
 
   MongoReplicaInstance3:
     Type: 'AWS::EC2::Instance'
@@ -920,6 +962,8 @@ Resources:
           Value: !Sub 'civicnexus-mongodb-3-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
+        - Key: Owner
+          Value: Mike
           
   # ------------------------------------------------------------#
   # Asset 1: Public Web Server and PHP Dashboard (Pantelis)
@@ -956,6 +1000,8 @@ Resources:
           Value: !Sub 'civicnexus-web-server-sg-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
+        - Key: Owner
+          Value: Pantelis
           
   WebServerInstance:
     Type: 'AWS::EC2::Instance'
@@ -1294,6 +1340,8 @@ Resources:
           Value: !Sub 'civicnexus-web-server-instance-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
+        - Key: Owner
+          Value: Pantelis
 
   WebServerElasticIP:
     Type: AWS::EC2::EIP
@@ -1305,6 +1353,8 @@ Resources:
           Value: !Sub 'civicnexus-web-server-eip-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
+        - Key: Owner
+          Value: Pantelis
 
   WebServerElasticIPAssociation:
     Type: AWS::EC2::EIPAssociation
@@ -1326,6 +1376,8 @@ Resources:
           Value: !Sub 'civicnexus-vdi-sg-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
+        - Key: Owner
+          Value: Shared
 
   VDIInstance:
     Type: 'AWS::EC2::Instance'
@@ -1353,6 +1405,8 @@ Resources:
           Value: !Sub 'civicnexus-vdi-instance-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
+        - Key: Owner
+          Value: Shared
           
 Outputs:
   WebServerPublicIP:
