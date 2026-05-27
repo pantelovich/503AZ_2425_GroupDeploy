@@ -12,7 +12,6 @@ on:
         type: choice
         options:
           - cfstack-secure.yml
-          - cfstack-402-serverless.yml
           - cfstack.yml
 
 jobs:
@@ -24,7 +23,7 @@ jobs:
 
       - name: Validate YAML templates
         run: |
-          ruby -e 'require "yaml"; YAML.load_file("cfstack.yml"); YAML.load_file("cfstack-secure.yml"); YAML.load_file("cfstack-402-serverless.yml")'
+          ruby -e 'require "yaml"; YAML.load_file("cfstack.yml"); YAML.load_file("cfstack-secure.yml")'
 
       - name: Check shell script syntax
         run: |
@@ -88,17 +87,6 @@ jobs:
               GroupSize=${{ secrets.GROUP_SIZE }} \
               KeyName=${{ secrets.KEY_NAME }}
 
-      - name: Deploy 402 Serverless Add-on
-        if: inputs.template_file == 'cfstack-402-serverless.yml'
-        run: |
-          aws cloudformation deploy \
-            --stack-name ${{ secrets.GROUP_NAME }}-402-serverless-addon \
-            --template-file ${{ inputs.template_file }} \
-            --capabilities CAPABILITY_IAM \
-            --parameter-overrides \
-              ProjectName=civicnexus402 \
-              AllowedOrigin="*"
-
       - name: Install MongoDB Shell
         if: inputs.template_file == 'cfstack.yml'
         run: |
@@ -128,13 +116,7 @@ jobs:
 
       - name: Show stack outputs
         run: |
-          if [ "${{ inputs.template_file }}" = "cfstack-402-serverless.yml" ]; then
-            STACK_NAME="${{ secrets.GROUP_NAME }}-402-serverless-addon"
-          else
-            STACK_NAME="${{ secrets.GROUP_NAME }}-civicnexus-stack"
-          fi
-
           aws cloudformation describe-stacks \
-            --stack-name "$STACK_NAME" \
+            --stack-name "${{ secrets.GROUP_NAME }}-civicnexus-stack" \
             --query "Stacks[0].Outputs" \
             --output table

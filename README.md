@@ -10,8 +10,6 @@ The project keeps the weak baseline and the improved secure version separate so 
 |---|---|
 | `cfstack.yml` | Original weak baseline stack. Keep this unchanged for comparison. |
 | `cfstack-secure.yml` | Improved stack used for agreed security controls. |
-| `cfstack-402-serverless.yml` | Optional 402-style add-on using Cognito, Lambda, API Gateway and DynamoDB. |
-| `frontend/` | Optional React/Amplify frontend for the 402-style add-on. |
 | `DBLoad.js` | Baseline MongoDB seed data script. |
 | `scripts/update_lab_credentials.sh` | Updates local AWS CLI and GitHub Actions secrets from the Learner Lab credentials block. |
 | `scripts/collect_webserver_evidence.sh` | Collects webserver, dashboard, header, health check, and security group evidence. |
@@ -38,7 +36,6 @@ The secure stack currently focuses on:
 - local database seeding during secure stack bootstrap
 - optional MongoDB backup evidence support, where the lab allows the needed IAM/S3 setup
 - optional VPC Flow Logs support for accepted and rejected traffic evidence
-- optional 402-style serverless add-on with Amplify/Cognito, Lambda and DynamoDB
 
 The latest Pantelis webserver evidence was collected on 2026-05-26 from stack `pantelis-week5-web-evidence`. The stack was deleted after evidence was saved to avoid wasting AWS Academy lab credit.
 
@@ -56,12 +53,6 @@ The baseline template can still be selected when the weak environment is needed 
 
 ```text
 cfstack.yml
-```
-
-The optional serverless add-on can also be selected:
-
-```text
-cfstack-402-serverless.yml
 ```
 
 ## Evidence

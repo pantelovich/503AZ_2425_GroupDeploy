@@ -22,16 +22,10 @@ We only claim controls when we have evidence.
 
 For Mike next session:
 
-1. Pantelis pushed `pantelis/402-serverless-addon`.
-2. This is separate from the main EC2/MongoDB secure stack.
-3. It adds the 402-style extra: Amplify frontend, Cognito login, API Gateway, Lambda and DynamoDB.
-4. It deployed successfully as `pantelis-402-serverless-addon`.
-5. The public API returned real DynamoDB data.
-6. Evidence is in OneDrive:
-   `503AZ Shared Work/Evidence/Raw AWS Output/2026-05-26_402_serverless/`
-   and
-   `503AZ Shared Work/Evidence/Screenshots/2026-05-26_402_serverless/`
-7. Do not merge this into the main secure stack yet. Review it first and keep the core coursework stack stable.
+1. Use branch `week6-final-no-402` if you want the main project without the 402 add-on.
+2. This branch keeps the secure EC2/MongoDB stack, web controls, optional OpenVPN resources and manual setup scripts.
+3. The 402 serverless files are not included in this branch.
+4. Use `week6-final-integration` only if you want the version that also contains the 402 add-on.
 
 Integration update:
 
@@ -54,15 +48,14 @@ Current secure target:
 5. Keep MongoDB open only to the web/app security group and replica members.
 6. Run MongoDB as a private replica set only if the final deploy proves it works.
 7. Keep lab-heavy evidence services disabled by default because AWS Academy blocks some IAM role creation.
-8. Treat the 402/S3 frontend as an extra after the secure stack works.
-9. Keep the 402 serverless add-on separate from the main secure stack so it does not destabilise the core coursework environment.
-10. Keep OpenVPN optional, not always on.
+8. Keep OpenVPN optional, not always on.
 
 Current branch position:
 
 1. `week6-replica-cleanup` is the clean working base.
 2. Pantelis' web/app side has working deployment evidence from 2026-05-26.
-3. `week6-final-integration` now contains the 402 add-on and selected optional VPN/MongoDB manual setup work.
+3. `week6-final-no-402` contains the main secure project without the 402 add-on.
+4. `week6-final-integration` contains the same project plus the 402 add-on.
 
 ## Current Work
 
@@ -118,6 +111,5 @@ Evidence can be:
 | 2026-05-22 | Pantelis | Deployed the clean replica branch in the AWS lab with evidence services disabled because the lab blocks IAM role creation. |
 | 2026-05-26 | Pantelis | Deployed the web evidence stack, confirmed dashboard, health check, headers, IMDSv2 and private MongoDB path, then deleted the stack after saving evidence. |
 | 2026-05-26 | Pantelis | Added a public summary API and stronger browser policy headers as an extra web-layer control. |
-| 2026-05-26 | Pantelis | Started a separate 402-style serverless add-on using Amplify/Cognito, Lambda, API Gateway and DynamoDB. |
-| 2026-05-26 | Pantelis | Pushed `pantelis/402-serverless-addon`, deployed it, tested the Lambda/DynamoDB public summary endpoint and saved frontend evidence. |
 | 2026-05-27 | Pantelis | Started `week6-final-integration`, added optional OpenVPN resources disabled by default, and brought in Mike's manual VPN/MongoDB setup scripts. |
+| 2026-05-27 | Pantelis | Created `week6-final-no-402` for the main secure project without the 402 add-on. |
