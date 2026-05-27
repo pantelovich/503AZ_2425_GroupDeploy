@@ -27,8 +27,8 @@ Parameters:
     AllowedValues: ['true', 'false']
   AdminAccessCidr:
     Type: String
-    Description: CIDR allowed to reach the optional OpenVPN admin server. Use your public IP with /32 where possible.
-    Default: 0.0.0.0/0
+    Description: CIDR allowed to reach the optional OpenVPN admin server. Override with your public IP /32 when VPN is enabled.
+    Default: 127.0.0.1/32
     AllowedPattern: '^(([0-9]{1,3}\.){3}[0-9]{1,3})/([0-9]|[1-2][0-9]|3[0-2])$'
   KeyName:
     Type: 'AWS::EC2::KeyPair::KeyName'
@@ -266,6 +266,21 @@ Resources:
           FromPort: 22
           ToPort: 22
           CidrIp: !Ref AdminAccessCidr
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: udp
+          FromPort: 53
+          ToPort: 53
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: -1
+          CidrIp: 10.0.0.0/16
       Tags:
         - Key: Name
           Value: !Sub 'civicnexus-openvpn-sg-mike-${GroupName}'
@@ -398,6 +413,8 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -413,6 +430,24 @@ Resources:
           Value: !Sub 'civicnexus-mongodb-backups-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
+
+  MongoBackupBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref MongoBackupBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !GetAtt MongoBackupBucket.Arn
+              - !Sub '${MongoBackupBucket.Arn}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
 
   MongoBackupRole:
     Type: AWS::IAM::Role
@@ -458,6 +493,19 @@ Resources:
     Properties:
       GroupDescription: 'Allows MongoDB only from approved internal security groups'
       VpcId: !Ref VPC
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: udp
+          FromPort: 53
+          ToPort: 53
+          CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
           Value: !Sub 'civicnexus-mongodb-sg-${GroupName}'
@@ -501,6 +549,15 @@ Resources:
       FromPort: 27017
       ToPort: 27017
       SourceSecurityGroupId: !Ref MongoSecurityGroup
+
+  MongoEgressToReplicaMembers:
+    Type: 'AWS::EC2::SecurityGroupEgress'
+    Properties:
+      GroupId: !Ref MongoSecurityGroup
+      IpProtocol: tcp
+      FromPort: 27017
+      ToPort: 27017
+      DestinationSecurityGroupId: !Ref MongoSecurityGroup
 
   MongoEC2Instance:
     Type: 'AWS::EC2::Instance'
@@ -845,6 +902,23 @@ Resources:
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 27017
+          ToPort: 27017
+          DestinationSecurityGroupId: !Ref MongoSecurityGroup
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: udp
+          FromPort: 53
+          ToPort: 53
+          CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
           Value: !Sub 'civicnexus-web-server-sg-${GroupName}'
@@ -921,6 +995,19 @@ Resources:
               Options -Indexes
           </Directory>
           EOF
+
+          # Keep database credentials outside the public web root
+          mkdir -p /etc/civicnexus
+          cat <<'EOF' > /etc/civicnexus/app.env
+          MONGO_HOSTS="${MongoEC2Instance.PrivateIp}:27017,${MongoReplicaInstance2.PrivateIp}:27017,${MongoReplicaInstance3.PrivateIp}:27017"
+          MONGO_USER="${MongoAppUsername}"
+          MONGO_PASSWORD="${MongoAppPassword}"
+          MONGO_REPLICA_SET="rs0"
+          EOF
+          chown root:apache /etc/civicnexus
+          chown root:apache /etc/civicnexus/app.env
+          chmod 750 /etc/civicnexus
+          chmod 640 /etc/civicnexus/app.env
         
           # Write dashboard app
           cat <<'EOF' > /var/www/html/index.php
@@ -930,12 +1017,18 @@ Resources:
           ini_set('log_errors', 1);
           error_reporting(E_ALL);
 
-          $mongoHosts = "${MongoEC2Instance.PrivateIp}:27017,${MongoReplicaInstance2.PrivateIp}:27017,${MongoReplicaInstance3.PrivateIp}:27017";
-          $mongoUser = "${MongoAppUsername}";
-          $mongoPassword = "${MongoAppPassword}";
-          $uri = "mongodb://" . rawurlencode($mongoUser) . ":" . rawurlencode($mongoPassword) . "@$mongoHosts/civicnexus?authSource=civicnexus&replicaSet=rs0";
-        
           try {
+              $config = parse_ini_file('/etc/civicnexus/app.env');
+              if ($config === false) {
+                  throw new RuntimeException('Application configuration is missing.');
+              }
+
+              $mongoHosts = $config['MONGO_HOSTS'];
+              $mongoUser = $config['MONGO_USER'];
+              $mongoPassword = $config['MONGO_PASSWORD'];
+              $replicaSet = $config['MONGO_REPLICA_SET'] ?? 'rs0';
+              $uri = "mongodb://" . rawurlencode($mongoUser) . ":" . rawurlencode($mongoPassword) . "@$mongoHosts/civicnexus?authSource=civicnexus&replicaSet=" . rawurlencode($replicaSet);
+
               require '/var/www/html/vendor/autoload.php';
               $client = new MongoDB\Client($uri, [], [
                   'serverSelectionTimeoutMS' => 2000,
@@ -1026,12 +1119,18 @@ Resources:
           ini_set('log_errors', 1);
           header('Content-Type: application/json');
 
-          $mongoHosts = "${MongoEC2Instance.PrivateIp}:27017,${MongoReplicaInstance2.PrivateIp}:27017,${MongoReplicaInstance3.PrivateIp}:27017";
-          $mongoUser = "${MongoAppUsername}";
-          $mongoPassword = "${MongoAppPassword}";
-          $uri = "mongodb://" . rawurlencode($mongoUser) . ":" . rawurlencode($mongoPassword) . "@$mongoHosts/civicnexus?authSource=civicnexus&replicaSet=rs0";
-
           try {
+              $config = parse_ini_file('/etc/civicnexus/app.env');
+              if ($config === false) {
+                  throw new RuntimeException('Application configuration is missing.');
+              }
+
+              $mongoHosts = $config['MONGO_HOSTS'];
+              $mongoUser = $config['MONGO_USER'];
+              $mongoPassword = $config['MONGO_PASSWORD'];
+              $replicaSet = $config['MONGO_REPLICA_SET'] ?? 'rs0';
+              $uri = "mongodb://" . rawurlencode($mongoUser) . ":" . rawurlencode($mongoPassword) . "@$mongoHosts/civicnexus?authSource=civicnexus&replicaSet=" . rawurlencode($replicaSet);
+
               require '/var/www/html/vendor/autoload.php';
               $client = new MongoDB\Client($uri, [], [
                   'serverSelectionTimeoutMS' => 2000,
@@ -1066,11 +1165,6 @@ Resources:
           header('Content-Type: application/json');
           header('Cache-Control: no-store');
 
-          $mongoHosts = "${MongoEC2Instance.PrivateIp}:27017,${MongoReplicaInstance2.PrivateIp}:27017,${MongoReplicaInstance3.PrivateIp}:27017";
-          $mongoUser = "${MongoAppUsername}";
-          $mongoPassword = "${MongoAppPassword}";
-          $uri = "mongodb://" . rawurlencode($mongoUser) . ":" . rawurlencode($mongoPassword) . "@$mongoHosts/civicnexus?authSource=civicnexus&replicaSet=rs0";
-
           function cleanTimestamp($value) {
               if ($value instanceof MongoDB\BSON\UTCDateTime) {
                   return $value->toDateTime()->format('Y-m-d H:i:s');
@@ -1079,6 +1173,17 @@ Resources:
           }
 
           try {
+              $config = parse_ini_file('/etc/civicnexus/app.env');
+              if ($config === false) {
+                  throw new RuntimeException('Application configuration is missing.');
+              }
+
+              $mongoHosts = $config['MONGO_HOSTS'];
+              $mongoUser = $config['MONGO_USER'];
+              $mongoPassword = $config['MONGO_PASSWORD'];
+              $replicaSet = $config['MONGO_REPLICA_SET'] ?? 'rs0';
+              $uri = "mongodb://" . rawurlencode($mongoUser) . ":" . rawurlencode($mongoPassword) . "@$mongoHosts/civicnexus?authSource=civicnexus&replicaSet=" . rawurlencode($replicaSet);
+
               require '/var/www/html/vendor/autoload.php';
               $client = new MongoDB\Client($uri, [], [
                   'serverSelectionTimeoutMS' => 2000,
@@ -1135,7 +1240,8 @@ Resources:
           dnf remove -y gcc make php-devel php-pear || true
           dnf clean all
           chown -R apache:apache /var/www/html
-          chmod -R 755 /var/www/html
+          find /var/www/html -type d -exec chmod 755 {} \;
+          find /var/www/html -type f -exec chmod 644 {} \;
         
           # Enable and start services
           systemctl enable php-fpm

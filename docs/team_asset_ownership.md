@@ -113,3 +113,4 @@ Evidence can be:
 | 2026-05-26 | Pantelis | Added a public summary API and stronger browser policy headers as an extra web-layer control. |
 | 2026-05-27 | Pantelis | Started `week6-final-integration`, added optional OpenVPN resources disabled by default, and brought in Mike's manual VPN/MongoDB setup scripts. |
 | 2026-05-27 | Pantelis | Created `week6-final-no-402` for the main secure project without the 402 add-on. |
+| 2026-05-27 | Pantelis | Tightened admin CIDR defaults, outbound rules, web credential storage, and backup bucket controls after reviewing the CloudFormation security notes. |
