@@ -36,6 +36,29 @@ For Mike next session:
 6. Remove DynamoDB only after the MongoDB path works.
 7. Do not merge `mike/database-work` directly. Copy only the needed changes into `week6-final-integration`.
 
+Dan's 402 requirement from 2026-05-28:
+
+1. Replace the DynamoDB data connection with MongoDB.
+2. Keep Cognito login.
+3. Put Cognito/JWT authorisation on the API route, not only on the frontend.
+4. Show a simple landing page if possible.
+5. Evidence must show:
+   - no token is rejected
+   - valid Cognito token is accepted
+   - the accepted API request reads or writes MongoDB
+
+Files Mike must read before editing:
+
+1. `docs/team_asset_ownership.md`
+2. `cfstack-secure.yml`
+3. `cfstack-402-serverless.yml`
+4. `frontend/src/App.tsx`
+5. `frontend/src/main.tsx`
+6. `frontend/README.md`
+7. `.github/workflows/main.yml`
+8. `README.md`
+9. `DBLoad.js`
+
 MongoDB conversion rules for Mike:
 
 1. Read `cfstack-secure.yml` first.
@@ -61,6 +84,19 @@ MongoDB conversion rules for Mike:
     - a simpler API Gateway/Cognito front path that calls an EC2/PHP MongoDB endpoint already using Composer.
 11. Do not leave fake imports like `require("mongodb")` in inline Lambda code unless the dependency is actually packaged.
 12. Push after each small working milestone so Pantelis can review.
+
+Important implementation note:
+
+Direct Lambda to MongoDB is good, but only if the Lambda deployment really includes the MongoDB driver and the Lambda runs inside the VPC. Inline CloudFormation Lambda code cannot just `require("mongodb")` because the dependency is not included by default.
+
+If packaging the Lambda driver becomes too fragile, use this safer lab design:
+
+1. API Gateway has the Cognito JWT authorizer.
+2. Authenticated API Gateway route calls Lambda.
+3. Lambda is inside the VPC.
+4. Lambda calls a private PHP endpoint on the web EC2 over the VPC.
+5. PHP talks to MongoDB using the existing Composer MongoDB driver.
+6. The public API result still comes from MongoDB, and DynamoDB is removed.
 
 Integration update:
 
