@@ -344,7 +344,7 @@ Resources:
       Protocol: 17
       RuleAction: allow
       Egress: true
-      CidrBlock: 0.0.0.0/0
+      CidrBlock: 10.0.0.2/32
       PortRange:
         From: 53
         To: 53
@@ -357,7 +357,7 @@ Resources:
       Protocol: 6
       RuleAction: allow
       Egress: true
-      CidrBlock: 0.0.0.0/0
+      CidrBlock: 10.0.0.2/32
       PortRange:
         From: 53
         To: 53
@@ -449,7 +449,7 @@ Resources:
         - IpProtocol: udp
           FromPort: 53
           ToPort: 53
-          CidrIp: 0.0.0.0/0
+          CidrIp: 10.0.0.2/32
         - IpProtocol: -1
           CidrIp: 10.0.0.0/16
       Tags:
@@ -684,7 +684,7 @@ Resources:
         - IpProtocol: udp
           FromPort: 53
           ToPort: 53
-          CidrIp: 0.0.0.0/0
+          CidrIp: 10.0.0.2/32
       Tags:
         - Key: Name
           Value: !Sub 'civicnexus-mongodb-sg-${GroupName}'
@@ -1121,7 +1121,7 @@ Resources:
         - IpProtocol: udp
           FromPort: 53
           ToPort: 53
-          CidrIp: 0.0.0.0/0
+          CidrIp: 10.0.0.2/32
       Tags:
         - Key: Name
           Value: !Sub 'civicnexus-web-server-sg-${GroupName}'
@@ -1605,7 +1605,7 @@ Resources:
         - IpProtocol: udp
           FromPort: 53
           ToPort: 53
-          CidrIp: 0.0.0.0/0
+          CidrIp: 10.0.0.2/32
         - IpProtocol: -1
           CidrIp: 10.0.0.0/16
       Tags:
