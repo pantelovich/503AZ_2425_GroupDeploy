@@ -22,12 +22,12 @@ Parameters:
     AllowedValues: ['true', 'false']
   EnableOpenVPN:
     Type: String
-    Description: Set to true only when collecting VPN admin access evidence.
-    Default: 'false'
+    Description: Set to false only if the OpenVPN admin access server is not needed.
+    Default: 'true'
     AllowedValues: ['true', 'false']
   AdminAccessCidr:
     Type: String
-    Description: CIDR allowed to reach the optional OpenVPN admin server. Override with your public IP /32 when VPN is enabled.
+    Description: CIDR allowed to reach the OpenVPN admin server. Use your public IP with /32 where possible.
     Default: 127.0.0.1/32
     AllowedPattern: '^(([0-9]{1,3}\.){3}[0-9]{1,3})/([0-9]|[1-2][0-9]|3[0-2])$'
   KeyName:

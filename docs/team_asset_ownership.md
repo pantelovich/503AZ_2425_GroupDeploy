@@ -98,9 +98,9 @@ If packaging the Lambda driver becomes too fragile, use this safer lab design:
 Integration update:
 
 1. Clean branch started: `week6-final-integration`.
-2. Added optional OpenVPN infrastructure to `cfstack-secure.yml`.
-3. OpenVPN is off by default with `EnableOpenVPN=false`, so normal deploys stay cheaper and simpler.
-4. If VPN evidence is needed, deploy with `EnableOpenVPN=true` and restrict `AdminAccessCidr` to the current public IP with `/32`.
+2. Added OpenVPN infrastructure to `cfstack-secure.yml`.
+3. OpenVPN is on by default with `EnableOpenVPN=true`, matching Mike's database branch test stack.
+4. Restrict `AdminAccessCidr` to the current public IP with `/32` where possible.
 5. Mike's manual setup scripts were added under `scripts/`:
    - `scripts/manual_openvpn_setup.sh`
    - `scripts/manual_mongodb_node_setup.sh`
