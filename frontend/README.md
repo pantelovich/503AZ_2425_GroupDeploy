@@ -9,11 +9,13 @@ It uses:
 - Cognito user pool from `cfstack-402-serverless.yml`
 - API Gateway HTTP API
 - Lambda
-- DynamoDB
+- the existing private MongoDB-backed CivicNexus web tier
 
 ## Configure
 
-Deploy `cfstack-402-serverless.yml`, then copy the `AmplifyEnvExample` output into `.env.local`.
+Deploy `cfstack-secure.yml` first, then deploy `cfstack-402-serverless.yml`.
+
+Copy the `AmplifyEnvExample` output from the 402 stack into `.env.local`.
 
 Example:
 
@@ -22,6 +24,8 @@ cp .env.example .env.local
 ```
 
 Update `.env.local` with the real CloudFormation outputs.
+
+The frontend calls the Cognito-protected `/items` API route. A request without a valid JWT should be rejected by API Gateway.
 
 ## Run
 

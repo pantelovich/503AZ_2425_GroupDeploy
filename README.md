@@ -10,7 +10,7 @@ The project keeps the weak baseline and the improved secure version separate so 
 |---|---|
 | `cfstack.yml` | Original weak baseline stack. Keep this unchanged for comparison. |
 | `cfstack-secure.yml` | Improved stack used for agreed security controls. |
-| `cfstack-402-serverless.yml` | Optional 402-style add-on using Cognito, Lambda, API Gateway and DynamoDB. |
+| `cfstack-402-serverless.yml` | Optional 402-style add-on using Cognito, API Gateway, Lambda and the existing MongoDB-backed web tier. |
 | `frontend/` | Optional React/Amplify frontend for the 402-style add-on. |
 | `DBLoad.js` | Baseline MongoDB seed data script. |
 | `scripts/update_lab_credentials.sh` | Updates local AWS CLI and GitHub Actions secrets from the Learner Lab credentials block. |
@@ -41,7 +41,7 @@ The secure stack currently focuses on:
 - MongoDB backup bucket encryption, versioning, public access blocking, and HTTPS-only bucket policy
 - optional MongoDB backup upload evidence support, where the lab allows the needed IAM/S3 setup
 - optional VPC Flow Logs support for accepted and rejected traffic evidence
-- optional 402-style serverless add-on with Amplify/Cognito, Lambda and DynamoDB
+- optional 402-style add-on with Amplify/Cognito, API Gateway JWT authorisation, Lambda and MongoDB-backed data
 
 The latest Pantelis webserver evidence was collected on 2026-05-26 from stack `pantelis-week5-web-evidence`. The stack was deleted after evidence was saved to avoid wasting AWS Academy lab credit.
 
@@ -61,7 +61,7 @@ The baseline template can still be selected when the weak environment is needed 
 cfstack.yml
 ```
 
-The optional serverless add-on can also be selected:
+The optional 402 add-on can also be selected after the secure stack is deployed:
 
 ```text
 cfstack-402-serverless.yml

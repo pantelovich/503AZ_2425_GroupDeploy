@@ -994,6 +994,10 @@ Resources:
           <Directory "/var/www/html">
               Options -Indexes
           </Directory>
+          <Directory "/var/www/html/internal">
+              Options -Indexes
+              Require ip 10.0.0.0/16
+          </Directory>
           EOF
 
           # Keep database credentials outside the public web root
@@ -1230,6 +1234,120 @@ Resources:
           }
           ?>
           EOF
+
+          mkdir -p /var/www/html/internal
+          cat <<'EOF' > /var/www/html/internal/402-mongo.php
+          <?php
+          ini_set('display_errors', 0);
+          ini_set('log_errors', 1);
+          header('Content-Type: application/json');
+          header('Cache-Control: no-store');
+
+          function apiReply($status, $body) {
+              http_response_code($status);
+              echo json_encode($body);
+              exit;
+          }
+
+          function cleanTimestamp($value) {
+              if ($value instanceof MongoDB\BSON\UTCDateTime) {
+                  return $value->toDateTime()->format('Y-m-d H:i:s');
+              }
+              return $value ? (string) $value : null;
+          }
+
+          try {
+              $config = parse_ini_file('/etc/civicnexus/app.env');
+              if ($config === false) {
+                  throw new RuntimeException('Application configuration is missing.');
+              }
+
+              $mongoHosts = $config['MONGO_HOSTS'];
+              $mongoUser = $config['MONGO_USER'];
+              $mongoPassword = $config['MONGO_PASSWORD'];
+              $replicaSet = $config['MONGO_REPLICA_SET'] ?? 'rs0';
+              $uri = "mongodb://" . rawurlencode($mongoUser) . ":" . rawurlencode($mongoPassword) . "@$mongoHosts/civicnexus?authSource=civicnexus&replicaSet=" . rawurlencode($replicaSet);
+
+              require '/var/www/html/vendor/autoload.php';
+              $client = new MongoDB\Client($uri, [], [
+                  'serverSelectionTimeoutMS' => 2000,
+                  'connectTimeoutMS' => 2000
+              ]);
+              $db = $client->civicnexus;
+
+              if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                  $payload = json_decode(file_get_contents('php://input'), true);
+                  if (!is_array($payload)) {
+                      apiReply(400, ['message' => 'invalid JSON body']);
+                  }
+
+                  $note = trim((string)($payload['note'] ?? ''));
+                  if ($note === '' || strlen($note) > 500) {
+                      apiReply(400, ['message' => 'note is required and must be under 500 characters']);
+                  }
+
+                  $operator = substr((string)($payload['operator'] ?? 'unknown'), 0, 120);
+                  $now = new MongoDB\BSON\UTCDateTime();
+                  $db->operator_notes->insertOne([
+                      'owner' => $operator,
+                      'note' => $note,
+                      'timestamp' => $now,
+                      'source' => 'cognito-api'
+                  ]);
+
+                  apiReply(201, [
+                      'status' => 'saved',
+                      'source' => 'mongodb',
+                      'owner' => $operator,
+                      'timestamp' => cleanTimestamp($now)
+                  ]);
+              }
+
+              if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+                  apiReply(405, ['message' => 'method not allowed']);
+              }
+
+              $publicRecords = [];
+              foreach ($db->urban_environment_data->find([], [
+                  'projection' => [
+                      '_id' => 0,
+                      'record_id' => 1,
+                      'data_type' => 1,
+                      'location' => 1,
+                      'reading_value' => 1,
+                      'unit' => 1,
+                      'timestamp' => 1
+                  ],
+                  'limit' => 10
+              ]) as $doc) {
+                  $publicRecords[] = [
+                      'id' => $doc['record_id'] ?? null,
+                      'dataType' => $doc['data_type'] ?? null,
+                      'location' => $doc['location'] ?? null,
+                      'reading' => trim(($doc['reading_value'] ?? '') . ' ' . ($doc['unit'] ?? '')),
+                      'timestamp' => cleanTimestamp($doc['timestamp'] ?? null)
+                  ];
+              }
+
+              apiReply(200, [
+                  'service' => 'civicnexus-402-mongodb-api',
+                  'status' => 'ok',
+                  'source' => 'mongodb',
+                  'public_records' => $publicRecords,
+                  'personnel_records' => 'restricted',
+                  'operational_log_details' => 'restricted',
+                  'operator_notes_count' => $db->operator_notes->countDocuments()
+              ]);
+          } catch (Exception $e) {
+              error_log("402 MongoDB API error: " . $e->getMessage());
+              apiReply(503, [
+                  'service' => 'civicnexus-402-mongodb-api',
+                  'status' => 'degraded',
+                  'source' => 'mongodb'
+              ]);
+          }
+          ?>
+          EOF
         
           # Run Composer as ec2-user, then restore ownership
           chown -R ec2-user:ec2-user /var/www/html
@@ -1293,9 +1411,34 @@ Outputs:
   WebServerPublicIP:
     Description: 'Public IP address of the Web Server'
     Value: !GetAtt WebServerInstance.PublicIp
+  WebServerPrivateIP:
+    Description: 'Private IP address used by internal API calls to the web server'
+    Value: !GetAtt WebServerInstance.PrivateIp
+    Export:
+      Name: !Sub '${GroupName}-CivicNexusWebPrivateIp'
   WebServerHealthURL:
     Description: 'Simple health endpoint for the web dashboard'
     Value: !Sub 'http://${WebServerInstance.PublicIp}/health.php'
+  CivicNexusVpcId:
+    Description: 'VPC used by the secure CivicNexus stack'
+    Value: !Ref VPC
+    Export:
+      Name: !Sub '${GroupName}-CivicNexusVpcId'
+  PrivateSubnet1Id:
+    Description: 'First private subnet used by the secure stack'
+    Value: !Ref PrivateSubnet1
+    Export:
+      Name: !Sub '${GroupName}-CivicNexusPrivateSubnet1Id'
+  PrivateSubnet2Id:
+    Description: 'Second private subnet used by the secure stack'
+    Value: !Ref PrivateSubnet2
+    Export:
+      Name: !Sub '${GroupName}-CivicNexusPrivateSubnet2Id'
+  WebServerSecurityGroupId:
+    Description: 'Security group used by the web server'
+    Value: !Ref WebServerSecurityGroup
+    Export:
+      Name: !Sub '${GroupName}-CivicNexusWebSecurityGroupId'
   MongoServerPrivateIP:
     Description: 'Private IP of the first MongoDB replica set member'
     Value: !GetAtt MongoEC2Instance.PrivateIp

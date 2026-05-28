@@ -20,21 +20,21 @@ Last updated: 2026-05-27
 
 We only claim controls when we have evidence.
 
-For Mike next session:
+402 MongoDB integration status:
 
 1. Work from `week6-final-integration`.
-2. Dan wants one database only, so final 402 work must use MongoDB, not DynamoDB.
-3. Pantelis already built the 402-style add-on path:
+2. Dan wants one database only, so final 402 work now uses MongoDB, not DynamoDB.
+3. Pantelis built the 402-style add-on path:
    - `cfstack-402-serverless.yml`
    - `frontend/`
    - Cognito user pool
    - API Gateway HTTP API
    - JWT authorizer
    - Lambda
-4. Mike's task is to convert the 402 data path from DynamoDB to the existing private MongoDB stack.
-5. Keep Cognito, API Gateway, JWT authorizer and the frontend login flow.
-6. Remove DynamoDB only after the MongoDB path works.
-7. Do not merge `mike/database-work` directly. Copy only the needed changes into `week6-final-integration`.
+4. The 402 data path now uses the existing private MongoDB-backed web tier.
+5. Cognito, API Gateway, JWT authorizer and the frontend login flow are kept.
+6. DynamoDB is removed from the final 402 template.
+7. Mike should review the MongoDB/security side only. Do not merge `mike/database-work` directly.
 
 Dan's 402 requirement from 2026-05-28:
 
@@ -47,7 +47,7 @@ Dan's 402 requirement from 2026-05-28:
    - valid Cognito token is accepted
    - the accepted API request reads or writes MongoDB
 
-Files Mike must read before editing:
+Files to read before editing:
 
 1. `docs/team_asset_ownership.md`
 2. `cfstack-secure.yml`
@@ -59,7 +59,7 @@ Files Mike must read before editing:
 8. `README.md`
 9. `DBLoad.js`
 
-MongoDB conversion rules for Mike:
+MongoDB conversion rules:
 
 1. Read `cfstack-secure.yml` first.
 2. Reuse the existing MongoDB replica set:
@@ -77,11 +77,8 @@ MongoDB conversion rules for Mike:
    - API reads or writes MongoDB
 7. Keep public safe data separate from restricted data.
 8. Do not expose personnel details or raw operational logs through a public route.
-9. If Lambda talks directly to MongoDB, it must run inside the VPC private path and have security group access to MongoDB on port 27017.
-10. If Lambda is used, remember the MongoDB driver is not built into Node.js Lambda. A real implementation needs either:
-    - a packaged Lambda zip with the MongoDB driver, or
-    - a Lambda layer containing the driver, or
-    - a simpler API Gateway/Cognito front path that calls an EC2/PHP MongoDB endpoint already using Composer.
+9. Current implementation uses API Gateway with Cognito JWT, then Lambda inside the VPC, then a private PHP endpoint on the web EC2, then MongoDB.
+10. This avoids fake Lambda MongoDB imports because PHP already has the Composer MongoDB driver.
 11. Do not leave fake imports like `require("mongodb")` in inline Lambda code unless the dependency is actually packaged.
 12. Push after each small working milestone so Pantelis can review.
 
@@ -187,3 +184,4 @@ Evidence can be:
 | 2026-05-26 | Pantelis | Pushed `pantelis/402-serverless-addon`, deployed it, tested the Lambda/DynamoDB public summary endpoint and saved frontend evidence. |
 | 2026-05-27 | Pantelis | Started `week6-final-integration`, added optional OpenVPN resources disabled by default, and brought in Mike's manual VPN/MongoDB setup scripts. |
 | 2026-05-27 | Pantelis | Tightened admin CIDR defaults, outbound rules, web credential storage, and backup bucket controls after reviewing the CloudFormation security notes. |
+| 2026-05-28 | Pantelis | Reworked the 402 add-on so Cognito-protected API Gateway routes call Lambda, then a private PHP endpoint, then MongoDB. DynamoDB was removed from the final 402 path. |

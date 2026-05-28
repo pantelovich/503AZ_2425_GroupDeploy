@@ -57,7 +57,12 @@ jobs:
           aws-region: us-east-1
 
       - name: Validate CloudFormation template
-        run: aws cloudformation validate-template --template-body file://${{ inputs.template_file }}
+        run: |
+          if [ "$(wc -c < "${{ inputs.template_file }}")" -le 51200 ]; then
+            aws cloudformation validate-template --template-body file://${{ inputs.template_file }}
+          else
+            echo "Skipping direct validate-template because ${{ inputs.template_file }} is over the 51200 byte API body limit."
+          fi
 
       - name: Deploy Secure CivicNexus Stack
         if: inputs.template_file == 'cfstack-secure.yml'
@@ -97,6 +102,7 @@ jobs:
             --capabilities CAPABILITY_IAM \
             --parameter-overrides \
               ProjectName=civicnexus402 \
+              GroupName=${{ secrets.GROUP_NAME }} \
               AllowedOrigin="*"
 
       - name: Install MongoDB Shell

@@ -62,7 +62,26 @@ textarea {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.75fr);
   gap: 28px;
-  padding: clamp(18px, 4vw, 52px);
+  padding: 0 clamp(18px, 4vw, 52px) clamp(18px, 4vw, 52px);
+}
+
+.landing {
+  display: grid;
+  grid-template-columns: minmax(0, 720px);
+  padding: clamp(18px, 4vw, 52px) clamp(18px, 4vw, 52px) 24px;
+}
+
+.landing h2 {
+  margin: 0;
+  color: #102c3a;
+  font-size: 1.35rem;
+}
+
+.landing p {
+  max-width: 760px;
+  margin: 8px 0 0;
+  color: #5b6674;
+  line-height: 1.55;
 }
 
 .section-title {
