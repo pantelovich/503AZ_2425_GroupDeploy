@@ -17,8 +17,10 @@ The project keeps the weak baseline and the improved secure version separate so 
 | `scripts/collect_webserver_evidence.sh` | Collects webserver, dashboard, header, health check, and security group evidence. |
 | `scripts/collect_database_evidence.sh` | Collects MongoDB instance, security group, and access evidence. |
 | `scripts/collect_network_audit_evidence.sh` | Collects CloudFormation, CloudTrail, and VPC Flow Log evidence. |
+| `scripts/install_database_vpn_packages.sh` | Installs MongoDB/OpenVPN packages only; configuration is completed manually. |
 | `scripts/list_lab_resources.sh` | Lists active AWS lab resources so unused stacks can be deleted before they waste credit. |
 | `docs/team_asset_ownership.md` | Records who worked on which asset and what changed. |
+| `docs/manual_mongodb_openvpn_runbook.md` | Manual setup steps for MongoDB replica/auth and OpenVPN admin access. |
 
 ## Current Secure Direction
 
@@ -34,10 +36,10 @@ The secure stack currently focuses on:
 - application database credentials stored outside the public web root
 - MongoDB placed in a private subnet with no public IP
 - MongoDB `27017` restricted to the webserver security group
-- MongoDB bound only to localhost and its private VPC IP
+- MongoDB packages installed by CloudFormation, with bind IP, authentication and replica set configuration completed manually
 - explicit outbound security group rules for web, VPN, and MongoDB setup traffic
 - NAT Gateway for private subnet outbound setup access
-- local database seeding during secure stack bootstrap
+- manual database user creation, seed data insertion and backup/restore evidence after the stack is deployed
 - MongoDB backup bucket encryption, versioning, public access blocking, and HTTPS-only bucket policy
 - optional MongoDB backup upload evidence support, where the lab allows the needed IAM/S3 setup
 - optional VPC Flow Logs support for accepted and rejected traffic evidence
@@ -65,6 +67,12 @@ The optional 402 add-on can also be selected after the secure stack is deployed:
 
 ```text
 cfstack-402-serverless.yml
+```
+
+After the secure stack is created, complete the manual MongoDB/OpenVPN configuration before collecting database or VPN evidence:
+
+```text
+docs/manual_mongodb_openvpn_runbook.md
 ```
 
 ## Evidence
