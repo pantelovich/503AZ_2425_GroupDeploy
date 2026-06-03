@@ -103,11 +103,9 @@ Integration update:
 2. Added optional OpenVPN infrastructure to `cfstack-secure.yml`.
 3. OpenVPN is off by default with `EnableOpenVPN=false`, so normal deploys stay cheaper and simpler.
 4. If VPN evidence is needed, deploy with `EnableOpenVPN=true` and restrict `AdminAccessCidr` to the current public IP with `/32`.
-5. Mike's manual setup scripts were added under `scripts/`:
-   - `scripts/manual_openvpn_setup.sh`
-   - `scripts/manual_mongodb_node_setup.sh`
-   - `scripts/manual_mongodb_primary_setup.sh`
-6. Do not replace the working web/MongoDB stack with Mike's whole branch. We are only taking the useful parts.
+5. MongoDB and OpenVPN package installation can use `scripts/install_database_vpn_packages.sh` if package installation needs to be repeated manually.
+6. MongoDB replica set setup, authentication, seed data, backup/restore and OpenVPN certificate/profile setup are manual runbook tasks, not hidden CloudFormation automation.
+7. Do not replace the working web/MongoDB stack with Mike's whole branch. We are only taking the useful parts.
 
 Current secure target:
 
@@ -116,7 +114,7 @@ Current secure target:
 3. Use NAT only if the private instance needs outbound setup access.
 4. Use VPN/SSM for admin access where possible, not public SSH.
 5. Keep MongoDB open only to the web/app security group and replica members.
-6. Run MongoDB as a private replica set only if the final deploy proves it works.
+6. Run MongoDB as a private replica set after manual configuration proves it works.
 7. Keep lab-heavy evidence services disabled by default because AWS Academy blocks some IAM role creation.
 8. Treat the 402/S3 frontend as an extra after the secure stack works.
 9. Keep the 402 serverless add-on separate from the main secure stack so it does not destabilise the core coursework environment.
