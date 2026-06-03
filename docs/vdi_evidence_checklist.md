@@ -16,6 +16,8 @@ The VDI control goal is secure private provisioning, not public remote desktop a
 - VDI security group with outbound web/DNS setup access and VPC-only internal access
 - optional RDP from the OpenVPN security group only when OpenVPN is enabled
 
+For live evidence against an existing secure stack, `cfstack-vdi-evidence.yml` can deploy the same private VDI pattern without updating or replacing the running web/MongoDB stack.
+
 ## Evidence To Capture
 
 | Check | Expected result |
@@ -37,7 +39,27 @@ After the stack is deployed, run:
 scripts/collect_vdi_evidence.sh <stack-name> <output-folder>
 ```
 
+Use the secure stack name if VDI was created by `cfstack-secure.yml`, or the VDI add-on stack name if VDI was created by `cfstack-vdi-evidence.yml`.
+
 Do not commit raw evidence output to GitHub.
+
+## Current Evidence Captured
+
+Evidence folder:
+
+```text
+/Users/pantelos/Library/CloudStorage/OneDrive-CoventryUniversity/Michalis Nicolaou's files - 503 Cloud Security/503AZ Shared Work/Evidence/Raw AWS Output/2026-06-03_final_vdi_evidence
+```
+
+Captured result:
+
+- stack `pantelis-vdi-evidence` created successfully
+- VDI instance `i-04e5f6efd4f36d1ee`
+- private IP `10.0.11.246`
+- public IP `None`
+- IMDSv2 `HttpTokens=required`
+- root EBS volume encrypted
+- VDI security group has no public RDP ingress
 
 ## Report Wording
 

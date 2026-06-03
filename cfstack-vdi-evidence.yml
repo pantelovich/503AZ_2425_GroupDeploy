@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'VDI evidence add-on for CivicNexus. Creates a private Windows VDI in the existing secure stack VPC.'
+
+Parameters:
+  GroupName:
+    Type: String
+    Description: Group name used by the secure stack exports.
+    Default: pantelis
+  KeyName:
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    Description: Name of an existing EC2 KeyPair for emergency admin access.
+  AdminSecurityGroupId:
+    Type: String
+    Description: Optional admin/VPN security group allowed to reach RDP. Leave blank to allow no inbound RDP.
+    Default: ''
+
+Conditions:
+  AllowRdpFromAdminSecurityGroup: !Not [!Equals [!Ref AdminSecurityGroupId, '']]
+
+Resources:
+  VDISecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: 'Private VDI security group - no public RDP'
+      VpcId:
+        Fn::ImportValue: !Sub '${GroupName}-CivicNexusVpcId'
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: udp
+          FromPort: 53
+          ToPort: 53
+          CidrIp: 10.0.0.2/32
+        - IpProtocol: -1
+          CidrIp: 10.0.0.0/16
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-vdi-sg-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  VDIRdpFromAdminSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: AllowRdpFromAdminSecurityGroup
+    Properties:
+      GroupId: !Ref VDISecurityGroup
+      IpProtocol: tcp
+      FromPort: 3389
+      ToPort: 3389
+      SourceSecurityGroupId: !Ref AdminSecurityGroupId
+
+  VDIInstance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: t3.medium
+      ImageId: ami-0909cee4864578472 # Windows Server 2022 Base
+      KeyName: !Ref KeyName
+      SubnetId:
+        Fn::ImportValue: !Sub '${GroupName}-CivicNexusPrivateSubnet2Id'
+      MetadataOptions:
+        HttpTokens: required
+        HttpEndpoint: enabled
+        HttpPutResponseHopLimit: 1
+        InstanceMetadataTags: disabled
+      SecurityGroupIds:
+        - !Ref VDISecurityGroup
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            Encrypted: true
+            VolumeType: gp3
+            DeleteOnTermination: true
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-vdi-instance-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+        - Key: AssetOwner
+          Value: Shared
+        - Key: EvidenceScope
+          Value: VDI
+
+Outputs:
+  VDIInstanceId:
+    Description: Instance ID of the private VDI instance.
+    Value: !Ref VDIInstance
+  VDIPrivateIP:
+    Description: Private IP address of the VDI instance.
+    Value: !GetAtt VDIInstance.PrivateIp
+  VDISecurityGroupId:
+    Description: Security group used by the private VDI instance.
+    Value: !Ref VDISecurityGroup

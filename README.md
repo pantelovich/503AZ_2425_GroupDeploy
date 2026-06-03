@@ -11,6 +11,7 @@ The project keeps the weak baseline and the improved secure version separate so 
 | `cfstack.yml` | Original weak baseline stack. Keep this unchanged for comparison. |
 | `cfstack-secure.yml` | Improved stack used for agreed security controls. |
 | `cfstack-402-serverless.yml` | Optional 402-style add-on using Cognito, API Gateway, Lambda and the existing MongoDB-backed web tier. |
+| `cfstack-vdi-evidence.yml` | VDI evidence add-on that creates a private Windows VDI in the existing secure VPC. |
 | `frontend/` | Optional React/Amplify frontend for the 402-style add-on. |
 | `DBLoad.js` | Baseline MongoDB seed data script. |
 | `scripts/update_lab_credentials.sh` | Updates local AWS CLI and GitHub Actions secrets from the Learner Lab credentials block. |
@@ -69,6 +70,12 @@ The optional 402 add-on can also be selected after the secure stack is deployed:
 
 ```text
 cfstack-402-serverless.yml
+```
+
+The VDI evidence add-on can be deployed after the secure stack is deployed:
+
+```text
+cfstack-vdi-evidence.yml
 ```
 
 After the secure stack is created, complete the manual MongoDB/OpenVPN configuration before collecting database or VPN evidence:

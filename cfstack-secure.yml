@@ -1456,7 +1456,7 @@ Resources:
     Condition: CreateVDI
     Properties:
       InstanceType: t3.medium
-      ImageId: ami-0efee5160a1079475 # Windows Server 2025 Base
+      ImageId: ami-0909cee4864578472 # Windows Server 2022 Base
       KeyName: !Ref KeyName
       SubnetId: !Ref PrivateSubnet2
       MetadataOptions:
