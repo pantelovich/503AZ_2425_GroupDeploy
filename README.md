@@ -16,6 +16,7 @@ The project keeps the weak baseline and the improved secure version separate so 
 | `scripts/update_lab_credentials.sh` | Updates local AWS CLI and GitHub Actions secrets from the Learner Lab credentials block. |
 | `scripts/collect_webserver_evidence.sh` | Collects webserver, dashboard, header, health check, and security group evidence. |
 | `scripts/collect_database_evidence.sh` | Collects MongoDB instance, security group, and access evidence. |
+| `scripts/collect_vdi_evidence.sh` | Collects VDI instance, security group, metadata, and volume encryption evidence. |
 | `scripts/collect_network_audit_evidence.sh` | Collects CloudFormation, CloudTrail, and VPC Flow Log evidence. |
 | `scripts/install_database_vpn_packages.sh` | Installs MongoDB/OpenVPN packages only; configuration is completed manually. |
 | `scripts/list_lab_resources.sh` | Lists active AWS lab resources so unused stacks can be deleted before they waste credit. |
@@ -44,6 +45,7 @@ The secure stack currently focuses on:
 - optional MongoDB backup upload evidence support, where the lab allows the needed IAM/S3 setup
 - optional VPC Flow Logs support for accepted and rejected traffic evidence
 - optional 402-style add-on with Amplify/Cognito, API Gateway JWT authorisation, Lambda and MongoDB-backed data
+- private VDI instance with no public RDP, IMDSv2, encrypted root volume, and optional RDP only through OpenVPN
 
 The latest Pantelis webserver evidence was collected on 2026-05-26 from stack `pantelis-week5-web-evidence`. The stack was deleted after evidence was saved to avoid wasting AWS Academy lab credit.
 
@@ -82,6 +84,7 @@ After deployment, collect evidence with:
 ```bash
 scripts/collect_webserver_evidence.sh <stack-name> <output-folder>
 scripts/collect_database_evidence.sh <stack-name> <output-folder>
+scripts/collect_vdi_evidence.sh <stack-name> <output-folder>
 scripts/collect_network_audit_evidence.sh <stack-name> <output-folder>
 ```
 
@@ -96,6 +99,15 @@ For Pantelis' web/app evidence, the useful checks are:
 5. dashboard shows restricted public data instead of raw personnel records
 6. web security group only exposes the required lab web port
 7. public summary API returns only safe city data and marks sensitive records as restricted
+
+For VDI evidence, the useful checks are:
+
+1. VDI instance exists in a private subnet
+2. VDI has no public IP address
+3. VDI security group does not allow public RDP
+4. IMDSv2 is required
+5. root EBS volume encryption is enabled
+6. RDP is allowed only from OpenVPN security group when VPN is enabled
 
 ## Lab Credit Check
 

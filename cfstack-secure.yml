@@ -12,8 +12,8 @@ Parameters:
     AllowedValues: [2, 3]
   EnableVDI:
     Type: String
-    Description: Set to true only if the optional third VDI asset is required.
-    Default: 'false'
+    Description: Set to false only if the VDI asset is explicitly out of scope. The final stack enables VDI evidence by default.
+    Default: 'true'
     AllowedValues: ['true', 'false']
   EnableEvidenceServices:
     Type: String
@@ -46,11 +46,12 @@ Parameters:
     AllowedPattern: '^[A-Za-z0-9_]{12,64}$'
 
 Conditions:
-  CreateVDI: !And
-    - !Equals [!Ref GroupSize, 3]
-    - !Equals [!Ref EnableVDI, 'true']
+  CreateVDI: !Equals [!Ref EnableVDI, 'true']
   CreateEvidenceServices: !Equals [!Ref EnableEvidenceServices, 'true']
   CreateOpenVPN: !Equals [!Ref EnableOpenVPN, 'true']
+  CreateVDIAndOpenVPN: !And
+    - !Equals [!Ref EnableVDI, 'true']
+    - !Equals [!Ref EnableOpenVPN, 'true']
 
 Resources:
   # ------------------------------------------------------------#
@@ -1411,7 +1412,7 @@ Resources:
           Value: !Ref GroupName
 
   # ------------------------------------------------------------#
-  # Optional VDI Instance (disabled by default for the two-person build)
+  # Asset 3: Private VDI Instance
   # ------------------------------------------------------------#
   VDISecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
@@ -1439,6 +1440,16 @@ Resources:
           Value: !Sub 'civicnexus-vdi-sg-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
+
+  VDIRdpFromOpenVPN:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: CreateVDIAndOpenVPN
+    Properties:
+      GroupId: !Ref VDISecurityGroup
+      IpProtocol: tcp
+      FromPort: 3389
+      ToPort: 3389
+      SourceSecurityGroupId: !Ref OpenVPNSecurityGroup
 
   VDIInstance:
     Type: 'AWS::EC2::Instance'
@@ -1540,6 +1551,10 @@ Outputs:
     Condition: CreateOpenVPN
     Value: '/home/ec2-user/civicnexus-vpn.ovpn'
   VDIInstanceId:
-    Description: 'Instance ID of the VDI instance (if created)'
+    Description: 'Instance ID of the private VDI instance'
     Condition: CreateVDI
     Value: !Ref VDIInstance
+  VDIPrivateIP:
+    Description: 'Private IP address of the VDI instance'
+    Condition: CreateVDI
+    Value: !GetAtt VDIInstance.PrivateIp

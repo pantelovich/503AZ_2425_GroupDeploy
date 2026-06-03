@@ -12,6 +12,7 @@ Last updated: 2026-06-03
 | Pantelis | 402 Cognito/API/frontend path | Cognito login, API Gateway JWT authorizer, Lambda VPC bridge, private PHP endpoint, MongoDB-backed read/write evidence |
 | Mike | MongoDB database | Database exposure, access control, replica set, backup and database evidence |
 | Mike | Manual database and VPN controls | MongoDB users/authentication, OpenVPN admin path, backup/restore and manual runbook evidence |
+| Shared | VDI asset | Private Windows VDI provisioning, no public RDP, IMDSv2, encrypted root volume, and VPN-only admin path evidence |
 | Both | Network and final testing | Security group links, integration checks, final evidence |
 
 ## Notes
@@ -152,6 +153,7 @@ Shared:
 3. Report evidence table.
 4. Decide which optional extras are kept in CloudFormation and which stay as manual evidence.
 5. Keep the submitted branch clear about code-backed controls versus manual controls.
+6. Capture VDI evidence because the VDI asset is part of the CivicNexus scenario.
 
 ## Final Team Submission Split
 
@@ -177,6 +179,7 @@ Evidence rule for final report:
 2. Claim manual controls only when Mike's runbook and screenshots/output prove them.
 3. Keep HTTPS/TLS and WAF as future improvements unless they are implemented and evidenced.
 4. Keep the final database story MongoDB-only.
+5. Claim VDI controls only after EC2/security group/metadata/volume evidence is captured.
 
 ## Evidence Rule
 
@@ -213,3 +216,4 @@ Evidence can be:
 | 2026-05-28 | Pantelis | Reworked the 402 add-on so Cognito-protected API Gateway routes call Lambda, then a private PHP endpoint, then MongoDB. DynamoDB was removed from the final 402 path. |
 | 2026-06-02 | Pantelis | Captured final Pantelis web/API evidence: web SG inbound, security headers, health check, public internal-endpoint block, API 401 without token, and valid Cognito GET/POST to MongoDB. |
 | 2026-06-03 | Pantelis | Added final team-submission split: Pantelis web/API code-backed controls and Mike manual MongoDB/OpenVPN controls. |
+| 2026-06-03 | Shared | Brought VDI into the final branch as an enabled private asset and added VDI evidence collection guidance. |
