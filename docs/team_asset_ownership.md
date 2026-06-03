@@ -2,14 +2,16 @@
 
 Short note on who covered what.
 
-Last updated: 2026-05-27
+Last updated: 2026-06-03
 
 ## Ownership
 
 | Person | Area | Work |
 |---|---|---|
 | Pantelis | Webserver and PHP dashboard | Webserver hardening, dashboard behaviour, health check, web evidence |
+| Pantelis | 402 Cognito/API/frontend path | Cognito login, API Gateway JWT authorizer, Lambda VPC bridge, private PHP endpoint, MongoDB-backed read/write evidence |
 | Mike | MongoDB database | Database exposure, access control, replica set, backup and database evidence |
+| Mike | Manual database and VPN controls | MongoDB users/authentication, OpenVPN admin path, backup/restore and manual runbook evidence |
 | Both | Network and final testing | Security group links, integration checks, final evidence |
 
 ## Notes
@@ -151,6 +153,32 @@ Shared:
 2. Final screenshots.
 3. Report evidence table.
 4. Decide which optional extras are kept in CloudFormation and which stay as manual evidence.
+5. Keep the submitted branch clear about code-backed controls versus manual controls.
+
+## Final Team Submission Split
+
+The final team branch should keep Pantelis' web/API path in code and Mike's heavier database/VPN work as manual runbook evidence unless it has been fully tested.
+
+Pantelis code-backed controls:
+
+1. `cfstack-secure.yml` web EC2, web security group, Apache/PHP dashboard, `/health.php`, browser headers, public summary route and private internal 402 bridge.
+2. `cfstack-402-serverless.yml` Cognito user pool, API Gateway HTTP API, JWT authorizer, Lambda VPC bridge and CORS setting.
+3. `frontend/` operator login and API client.
+
+Mike manual/database controls:
+
+1. MongoDB replica administration.
+2. MongoDB users and database authentication.
+3. MongoDB backup and restore.
+4. OpenVPN/admin access path.
+5. Database security group and database hardening evidence.
+
+Evidence rule for final report:
+
+1. Claim implemented controls only when there is code or live evidence.
+2. Claim manual controls only when Mike's runbook and screenshots/output prove them.
+3. Keep HTTPS/TLS and WAF as future improvements unless they are implemented and evidenced.
+4. Keep the final database story MongoDB-only.
 
 ## Evidence Rule
 
@@ -185,3 +213,5 @@ Evidence can be:
 | 2026-05-27 | Pantelis | Started `week6-final-integration`, added optional OpenVPN resources disabled by default, and brought in Mike's manual VPN/MongoDB setup scripts. |
 | 2026-05-27 | Pantelis | Tightened admin CIDR defaults, outbound rules, web credential storage, and backup bucket controls after reviewing the CloudFormation security notes. |
 | 2026-05-28 | Pantelis | Reworked the 402 add-on so Cognito-protected API Gateway routes call Lambda, then a private PHP endpoint, then MongoDB. DynamoDB was removed from the final 402 path. |
+| 2026-06-02 | Pantelis | Captured final Pantelis web/API evidence: web SG inbound, security headers, health check, public internal-endpoint block, API 401 without token, and valid Cognito GET/POST to MongoDB. |
+| 2026-06-03 | Pantelis | Added final team-submission split: Pantelis web/API code-backed controls and Mike manual MongoDB/OpenVPN controls. |
