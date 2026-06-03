@@ -50,15 +50,14 @@ Resources:
   CivicNexusLambdaSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Lambda egress to the private CivicNexus web API
+      GroupDescription: Lambda egress from the private VPC to the public VPC web API
       VpcId:
         Fn::ImportValue: !Sub '${GroupName}-CivicNexusVpcId'
       SecurityGroupEgress:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
-          DestinationSecurityGroupId:
-            Fn::ImportValue: !Sub '${GroupName}-CivicNexusWebSecurityGroupId'
+          CidrIp: 10.0.0.0/16
       Tags:
         - Key: Project
           Value: !Ref ProjectName

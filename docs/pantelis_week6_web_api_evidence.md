@@ -4,6 +4,7 @@ This checklist covers Pantelis' part of the final CivicNexus team submission.
 
 Pantelis owns:
 
+- PublicVPC, web route table and public web path
 - public webserver and PHP dashboard
 - `/health.php`
 - web security group explanation
@@ -33,6 +34,7 @@ Captured checks:
 
 | Check | Expected result | Status |
 |---|---|---|
+| Network layout | PublicVPC `10.0.0.0/16`, PrivateVPC `192.168.0.0/16`, Transit Gateway routes | Needs fresh evidence after redeploy |
 | Web security group inbound | Public TCP 80 only, no public SSH | Captured |
 | `curl -I /` | Browser/security headers present | Captured |
 | `/health.php` | `status: ok`, `database: reachable` | Captured |
@@ -47,7 +49,7 @@ Captured checks:
 When Mike's submitted branch is available locally:
 
 1. Fetch and switch to the submitted branch.
-2. Confirm `cfstack-secure.yml` still exports the web private IP, web security group and private subnet IDs used by `cfstack-402-serverless.yml`.
+2. Confirm `cfstack-secure.yml` still exports the web private IP, web security group, PrivateVPC ID and private subnet IDs used by `cfstack-402-serverless.yml`.
 3. Deploy or reuse the secure stack.
 4. Deploy the 402 serverless add-on.
 5. Rerun the checks above.
@@ -60,6 +62,12 @@ Use this architecture story:
 
 ```text
 Cognito login -> API Gateway JWT authorizer -> Lambda in VPC -> private PHP endpoint -> MongoDB
+```
+
+For the advanced network design, write it as:
+
+```text
+Cognito login -> API Gateway JWT authorizer -> Lambda in PrivateVPC -> Transit Gateway -> private PHP endpoint on PublicVPC web EC2 -> Transit Gateway -> MongoDB in PrivateVPC
 ```
 
 Do not mention DynamoDB as the final database.

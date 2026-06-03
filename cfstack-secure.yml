@@ -57,7 +57,7 @@ Resources:
   # ------------------------------------------------------------#
   # Networking
   # ------------------------------------------------------------#
-  VPC:
+  PublicVPC:
     Type: 'AWS::EC2::VPC'
     Properties:
       CidrBlock: 10.0.0.0/16
@@ -65,7 +65,19 @@ Resources:
       EnableDnsHostnames: true
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-vpc-${GroupName}'
+          Value: !Sub 'civicnexus-public-vpc-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  PrivateVPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: 192.168.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-private-vpc-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -79,13 +91,13 @@ Resources:
   AttachGateway:
     Type: 'AWS::EC2::VPCGatewayAttachment'
     Properties:
-      VpcId: !Ref VPC
+      VpcId: !Ref PublicVPC
       InternetGatewayId: !Ref InternetGateway
 
   PublicSubnet1:
     Type: 'AWS::EC2::Subnet'
     Properties:
-      VpcId: !Ref VPC
+      VpcId: !Ref PublicVPC
       CidrBlock: 10.0.1.0/24
       AvailabilityZone: !Select [0, !GetAZs '']
       MapPublicIpOnLaunch: true
@@ -98,7 +110,7 @@ Resources:
   PublicSubnet2:
     Type: 'AWS::EC2::Subnet'
     Properties:
-      VpcId: !Ref VPC
+      VpcId: !Ref PublicVPC
       CidrBlock: 10.0.2.0/24
       AvailabilityZone: !Select [1, !GetAZs '']
       MapPublicIpOnLaunch: true
@@ -108,46 +120,72 @@ Resources:
         - Key: GroupName
           Value: !Ref GroupName
 
+  PublicTransitSubnet1:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref PublicVPC
+      CidrBlock: 10.0.100.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-public-transit-subnet-1-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  PublicTransitSubnet2:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref PublicVPC
+      CidrBlock: 10.0.101.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-public-transit-subnet-2-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
   PrivateSubnet1:
     Type: 'AWS::EC2::Subnet'
     Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.10.0/24
+      VpcId: !Ref PrivateVPC
+      CidrBlock: 192.168.10.0/24
       AvailabilityZone: !Select [0, !GetAZs '']
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-private-subnet-1-${GroupName}'
+          Value: !Sub 'civicnexus-private-vpc-subnet-1-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
   PrivateSubnet2:
     Type: 'AWS::EC2::Subnet'
     Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.11.0/24
+      VpcId: !Ref PrivateVPC
+      CidrBlock: 192.168.11.0/24
       AvailabilityZone: !Select [1, !GetAZs '']
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-private-subnet-2-${GroupName}'
+          Value: !Sub 'civicnexus-private-vpc-subnet-2-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
   PrivateSubnet3:
     Type: 'AWS::EC2::Subnet'
     Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.12.0/24
+      VpcId: !Ref PrivateVPC
+      CidrBlock: 192.168.12.0/24
       AvailabilityZone: !Select [2, !GetAZs '']
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-private-subnet-3-${GroupName}'
+          Value: !Sub 'civicnexus-private-vpc-subnet-3-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
   
   PublicRouteTable:
     Type: 'AWS::EC2::RouteTable'
     Properties:
-      VpcId: !Ref VPC
+      VpcId: !Ref PublicVPC
       Tags:
         - Key: Name
           Value: !Sub 'civicnexus-public-rt-${GroupName}'
@@ -173,11 +211,165 @@ Resources:
     Properties:
       SubnetId: !Ref PublicSubnet2
       RouteTableId: !Ref PublicRouteTable
-      
+
+  PublicTransitRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref PublicVPC
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-public-transit-rt-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  PublicTransitSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicTransitSubnet1
+      RouteTableId: !Ref PublicTransitRouteTable
+
+  PublicTransitSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicTransitSubnet2
+      RouteTableId: !Ref PublicTransitRouteTable
+
+  TransitGateway:
+    Type: AWS::EC2::TransitGateway
+    Properties:
+      Description: !Sub 'CivicNexus two-VPC transit gateway for ${GroupName}'
+      DefaultRouteTableAssociation: disable
+      DefaultRouteTablePropagation: disable
+      DnsSupport: enable
+      VpnEcmpSupport: disable
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-tgw-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  PublicVpcTransitGatewayAttachment:
+    Type: AWS::EC2::TransitGatewayAttachment
+    Properties:
+      TransitGatewayId: !Ref TransitGateway
+      VpcId: !Ref PublicVPC
+      SubnetIds:
+        - !Ref PublicTransitSubnet1
+        - !Ref PublicTransitSubnet2
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-public-vpc-tgw-attachment-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  PrivateVpcTransitGatewayAttachment:
+    Type: AWS::EC2::TransitGatewayAttachment
+    Properties:
+      TransitGatewayId: !Ref TransitGateway
+      VpcId: !Ref PrivateVPC
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-private-vpc-tgw-attachment-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  PublicVpcTransitGatewayRouteTable:
+    Type: AWS::EC2::TransitGatewayRouteTable
+    Properties:
+      TransitGatewayId: !Ref TransitGateway
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-public-vpc-tgw-rt-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  PrivateVpcTransitGatewayRouteTable:
+    Type: AWS::EC2::TransitGatewayRouteTable
+    Properties:
+      TransitGatewayId: !Ref TransitGateway
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-private-vpc-tgw-rt-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  PublicVpcTransitGatewayRouteTableAssociation:
+    Type: AWS::EC2::TransitGatewayRouteTableAssociation
+    Properties:
+      TransitGatewayAttachmentId: !Ref PublicVpcTransitGatewayAttachment
+      TransitGatewayRouteTableId: !Ref PublicVpcTransitGatewayRouteTable
+
+  PrivateVpcTransitGatewayRouteTableAssociation:
+    Type: AWS::EC2::TransitGatewayRouteTableAssociation
+    Properties:
+      TransitGatewayAttachmentId: !Ref PrivateVpcTransitGatewayAttachment
+      TransitGatewayRouteTableId: !Ref PrivateVpcTransitGatewayRouteTable
+
+  PublicTgwRouteToPrivateVpc:
+    Type: AWS::EC2::TransitGatewayRoute
+    DependsOn:
+      - PublicVpcTransitGatewayRouteTableAssociation
+      - PrivateVpcTransitGatewayAttachment
+    Properties:
+      DestinationCidrBlock: 192.168.0.0/16
+      TransitGatewayAttachmentId: !Ref PrivateVpcTransitGatewayAttachment
+      TransitGatewayRouteTableId: !Ref PublicVpcTransitGatewayRouteTable
+
+  PrivateTgwRouteToPublicVpc:
+    Type: AWS::EC2::TransitGatewayRoute
+    DependsOn:
+      - PrivateVpcTransitGatewayRouteTableAssociation
+      - PublicVpcTransitGatewayAttachment
+    Properties:
+      DestinationCidrBlock: 10.0.0.0/16
+      TransitGatewayAttachmentId: !Ref PublicVpcTransitGatewayAttachment
+      TransitGatewayRouteTableId: !Ref PrivateVpcTransitGatewayRouteTable
+
+  PrivateTgwDefaultRoute:
+    Type: AWS::EC2::TransitGatewayRoute
+    DependsOn:
+      - PrivateVpcTransitGatewayRouteTableAssociation
+      - PublicVpcTransitGatewayAttachment
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      TransitGatewayAttachmentId: !Ref PublicVpcTransitGatewayAttachment
+      TransitGatewayRouteTableId: !Ref PrivateVpcTransitGatewayRouteTable
+
+  PublicVpcRouteToPrivateVpc:
+    Type: AWS::EC2::Route
+    DependsOn:
+      - PublicVpcTransitGatewayAttachment
+      - PrivateVpcTransitGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 192.168.0.0/16
+      TransitGatewayId: !Ref TransitGateway
+
+  PublicTransitDefaultRouteToNat:
+    Type: AWS::EC2::Route
+    DependsOn: NatGateway
+    Properties:
+      RouteTableId: !Ref PublicTransitRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  PublicTransitRouteToPrivateVpc:
+    Type: AWS::EC2::Route
+    DependsOn:
+      - PublicVpcTransitGatewayAttachment
+      - PrivateVpcTransitGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicTransitRouteTable
+      DestinationCidrBlock: 192.168.0.0/16
+      TransitGatewayId: !Ref TransitGateway
+
   PrivateRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
-      VpcId: !Ref VPC
+      VpcId: !Ref PrivateVPC
       Tags:
         - Key: Name
           Value: !Sub 'civicnexus-private-rt-${GroupName}'
@@ -197,6 +389,7 @@ Resources:
 
   NatGateway:
     Type: AWS::EC2::NatGateway
+    DependsOn: DefaultPublicRoute
     Properties:
       AllocationId: !GetAtt NatGatewayElasticIP.AllocationId
       SubnetId: !Ref PublicSubnet1
@@ -208,11 +401,24 @@ Resources:
 
   PrivateDefaultRoute:
     Type: AWS::EC2::Route
-    DependsOn: NatGateway
+    DependsOn:
+      - PrivateVpcTransitGatewayAttachment
+      - PrivateTgwDefaultRoute
+      - PublicTransitDefaultRouteToNat
     Properties:
       RouteTableId: !Ref PrivateRouteTable
       DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NatGateway
+      TransitGatewayId: !Ref TransitGateway
+
+  PrivateVpcRouteToPublicVpc:
+    Type: AWS::EC2::Route
+    DependsOn:
+      - PrivateVpcTransitGatewayAttachment
+      - PrivateTgwRouteToPublicVpc
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 10.0.0.0/16
+      TransitGatewayId: !Ref TransitGateway
 
   PrivateSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -235,7 +441,7 @@ Resources:
   PrivateSubnetNetworkAcl:
     Type: AWS::EC2::NetworkAcl
     Properties:
-      VpcId: !Ref VPC
+      VpcId: !Ref PrivateVPC
       Tags:
         - Key: Name
           Value: !Sub 'civicnexus-private-subnet-acl-${GroupName}'
@@ -255,6 +461,19 @@ Resources:
         From: 27017
         To: 27017
 
+  PrivateSubnetAclInboundMongoFromPrivateVpc:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref PrivateSubnetNetworkAcl
+      RuleNumber: 105
+      Protocol: 6
+      RuleAction: allow
+      Egress: false
+      CidrBlock: 192.168.0.0/16
+      PortRange:
+        From: 27017
+        To: 27017
+
   PrivateSubnetAclInboundSshFromVpc:
     Type: AWS::EC2::NetworkAclEntry
     Properties:
@@ -267,6 +486,32 @@ Resources:
       PortRange:
         From: 22
         To: 22
+
+  PrivateSubnetAclInboundSshFromPrivateVpc:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref PrivateSubnetNetworkAcl
+      RuleNumber: 115
+      Protocol: 6
+      RuleAction: allow
+      Egress: false
+      CidrBlock: 192.168.0.0/16
+      PortRange:
+        From: 22
+        To: 22
+
+  PrivateSubnetAclInboundRdpFromPublicVpc:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref PrivateSubnetNetworkAcl
+      RuleNumber: 116
+      Protocol: 6
+      RuleAction: allow
+      Egress: false
+      CidrBlock: 10.0.0.0/16
+      PortRange:
+        From: 3389
+        To: 3389
 
   PrivateSubnetAclInboundEphemeralTcp:
     Type: AWS::EC2::NetworkAclEntry
@@ -328,7 +573,7 @@ Resources:
       Protocol: 17
       RuleAction: allow
       Egress: true
-      CidrBlock: 10.0.0.2/32
+      CidrBlock: 192.168.0.2/32
       PortRange:
         From: 53
         To: 53
@@ -341,7 +586,7 @@ Resources:
       Protocol: 6
       RuleAction: allow
       Egress: true
-      CidrBlock: 10.0.0.2/32
+      CidrBlock: 192.168.0.2/32
       PortRange:
         From: 53
         To: 53
@@ -354,12 +599,12 @@ Resources:
       Protocol: 6
       RuleAction: allow
       Egress: true
-      CidrBlock: 10.0.0.0/16
+      CidrBlock: 192.168.0.0/16
       PortRange:
         From: 27017
         To: 27017
 
-  PrivateSubnetAclOutboundEphemeralTcpToVpc:
+  PrivateSubnetAclOutboundEphemeralTcpToPublicVpc:
     Type: AWS::EC2::NetworkAclEntry
     Properties:
       NetworkAclId: !Ref PrivateSubnetNetworkAcl
@@ -372,7 +617,20 @@ Resources:
         From: 1024
         To: 65535
 
-  PrivateSubnetAclOutboundEphemeralUdpToVpc:
+  PrivateSubnetAclOutboundEphemeralTcpToPrivateVpc:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref PrivateSubnetNetworkAcl
+      RuleNumber: 155
+      Protocol: 6
+      RuleAction: allow
+      Egress: true
+      CidrBlock: 192.168.0.0/16
+      PortRange:
+        From: 1024
+        To: 65535
+
+  PrivateSubnetAclOutboundEphemeralUdpToPublicVpc:
     Type: AWS::EC2::NetworkAclEntry
     Properties:
       NetworkAclId: !Ref PrivateSubnetNetworkAcl
@@ -381,6 +639,19 @@ Resources:
       RuleAction: allow
       Egress: true
       CidrBlock: 10.0.0.0/16
+      PortRange:
+        From: 1024
+        To: 65535
+
+  PrivateSubnetAclOutboundEphemeralUdpToPrivateVpc:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref PrivateSubnetNetworkAcl
+      RuleNumber: 165
+      Protocol: 17
+      RuleAction: allow
+      Egress: true
+      CidrBlock: 192.168.0.0/16
       PortRange:
         From: 1024
         To: 65535
@@ -410,8 +681,8 @@ Resources:
     Type: 'AWS::EC2::SecurityGroup'
     Condition: CreateOpenVPN
     Properties:
-      GroupDescription: 'Allows administrator OpenVPN access into the VPC'
-      VpcId: !Ref VPC
+      GroupDescription: 'Allows administrator OpenVPN access from the public VPC to the private VPC'
+      VpcId: !Ref PublicVPC
       SecurityGroupIngress:
         - IpProtocol: udp
           FromPort: 1194
@@ -435,7 +706,7 @@ Resources:
           ToPort: 53
           CidrIp: 10.0.0.2/32
         - IpProtocol: -1
-          CidrIp: 10.0.0.0/16
+          CidrIp: 192.168.0.0/16
       Tags:
         - Key: Name
           Value: !Sub 'civicnexus-openvpn-sg-mike-${GroupName}'
@@ -559,12 +830,28 @@ Resources:
       DeliverLogsPermissionArn: !GetAtt VpcFlowLogsRole.Arn
       LogDestinationType: cloud-watch-logs
       LogGroupName: !Ref VpcFlowLogGroup
-      ResourceId: !Ref VPC
+      ResourceId: !Ref PublicVPC
       ResourceType: VPC
       TrafficType: ALL
       Tags:
         - Key: Name
-          Value: !Sub 'civicnexus-vpc-flow-log-${GroupName}'
+          Value: !Sub 'civicnexus-public-vpc-flow-log-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  PrivateVpcFlowLog:
+    Type: AWS::EC2::FlowLog
+    Condition: CreateEvidenceServices
+    Properties:
+      DeliverLogsPermissionArn: !GetAtt VpcFlowLogsRole.Arn
+      LogDestinationType: cloud-watch-logs
+      LogGroupName: !Ref VpcFlowLogGroup
+      ResourceId: !Ref PrivateVPC
+      ResourceType: VPC
+      TrafficType: ALL
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-private-vpc-flow-log-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
@@ -658,7 +945,7 @@ Resources:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
       GroupDescription: 'Allows MongoDB only from approved internal security groups'
-      VpcId: !Ref VPC
+      VpcId: !Ref PrivateVPC
       SecurityGroupEgress:
         - IpProtocol: tcp
           FromPort: 80
@@ -671,7 +958,7 @@ Resources:
         - IpProtocol: udp
           FromPort: 53
           ToPort: 53
-          CidrIp: 10.0.0.2/32
+          CidrIp: 192.168.0.2/32
       Tags:
         - Key: Name
           Value: !Sub 'civicnexus-mongodb-sg-${GroupName}'
@@ -685,7 +972,7 @@ Resources:
       IpProtocol: tcp
       FromPort: 27017
       ToPort: 27017
-      SourceSecurityGroupId: !Ref WebServerSecurityGroup
+      CidrIp: 10.0.0.0/16
 
   MongoIngressFromOpenVPN:
     Type: 'AWS::EC2::SecurityGroupIngress'
@@ -695,7 +982,7 @@ Resources:
       IpProtocol: tcp
       FromPort: 27017
       ToPort: 27017
-      SourceSecurityGroupId: !Ref OpenVPNSecurityGroup
+      CidrIp: 10.8.0.0/24
 
   MongoSSHFromOpenVPN:
     Type: 'AWS::EC2::SecurityGroupIngress'
@@ -705,7 +992,7 @@ Resources:
       IpProtocol: tcp
       FromPort: 22
       ToPort: 22
-      SourceSecurityGroupId: !Ref OpenVPNSecurityGroup
+      CidrIp: 10.0.0.0/16
 
   MongoIngressFromReplicaMembers:
     Type: 'AWS::EC2::SecurityGroupIngress'
@@ -735,7 +1022,7 @@ Resources:
     Properties:
       InstanceType: t3.small
       SubnetId: !Ref PrivateSubnet1
-      PrivateIpAddress: 10.0.10.10
+      PrivateIpAddress: 192.168.10.10
       KeyName: !Ref KeyName
       IamInstanceProfile: !If [CreateEvidenceServices, !Ref MongoBackupInstanceProfile, !Ref 'AWS::NoValue']
       MetadataOptions:
@@ -776,7 +1063,7 @@ Resources:
           This node is not configured automatically.
 
           Manual setup still required:
-          1. Set bindIp to 127.0.0.1 and this node private IP: 10.0.10.10
+          1. Set bindIp to 127.0.0.1 and this node private IP: 192.168.10.10
           2. Create the same /etc/mongo-keyfile on mongo1, mongo2 and mongo3
           3. Enable authorization and replication with replSetName rs0
           4. Start mongod on each node
@@ -801,7 +1088,7 @@ Resources:
     Properties:
       InstanceType: t3.small
       SubnetId: !Ref PrivateSubnet2
-      PrivateIpAddress: 10.0.11.10
+      PrivateIpAddress: 192.168.11.10
       KeyName: !Ref KeyName
       MetadataOptions:
         HttpTokens: required
@@ -840,7 +1127,7 @@ Resources:
           This node is not configured automatically.
 
           Manual setup still required:
-          1. Set bindIp to 127.0.0.1 and this node private IP: 10.0.11.10
+          1. Set bindIp to 127.0.0.1 and this node private IP: 192.168.11.10
           2. Create the same /etc/mongo-keyfile on mongo1, mongo2 and mongo3
           3. Enable authorization and replication with replSetName rs0
           4. Start mongod on each node
@@ -864,7 +1151,7 @@ Resources:
     Properties:
       InstanceType: t3.small
       SubnetId: !Ref PrivateSubnet3
-      PrivateIpAddress: 10.0.12.10
+      PrivateIpAddress: 192.168.12.10
       KeyName: !Ref KeyName
       MetadataOptions:
         HttpTokens: required
@@ -903,7 +1190,7 @@ Resources:
           This node is not configured automatically.
 
           Manual setup still required:
-          1. Set bindIp to 127.0.0.1 and this node private IP: 10.0.12.10
+          1. Set bindIp to 127.0.0.1 and this node private IP: 192.168.12.10
           2. Create the same /etc/mongo-keyfile on mongo1, mongo2 and mongo3
           3. Enable authorization and replication with replSetName rs0
           4. Start mongod on each node
@@ -926,7 +1213,7 @@ Resources:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
       GroupDescription: 'Allows HTTP traffic to the web dashboard'
-      VpcId: !Ref VPC
+      VpcId: !Ref PublicVPC
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
@@ -936,7 +1223,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: 27017
           ToPort: 27017
-          DestinationSecurityGroupId: !Ref MongoSecurityGroup
+          CidrIp: 192.168.0.0/16
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
@@ -1034,7 +1321,7 @@ Resources:
           </Directory>
           <Directory "/var/www/html/internal">
               Options -Indexes
-              Require ip 10.0.0.0/16
+              Require ip 10.0.0.0/16 192.168.0.0/16
           </Directory>
           EOF
 
@@ -1419,7 +1706,7 @@ Resources:
     Condition: CreateVDI
     Properties:
       GroupDescription: 'Private VDI security group - no public RDP'
-      VpcId: !Ref VPC
+      VpcId: !Ref PrivateVPC
       SecurityGroupEgress:
         - IpProtocol: tcp
           FromPort: 80
@@ -1432,9 +1719,9 @@ Resources:
         - IpProtocol: udp
           FromPort: 53
           ToPort: 53
-          CidrIp: 10.0.0.2/32
+          CidrIp: 192.168.0.2/32
         - IpProtocol: -1
-          CidrIp: 10.0.0.0/16
+          CidrIp: 192.168.0.0/16
       Tags:
         - Key: Name
           Value: !Sub 'civicnexus-vdi-sg-${GroupName}'
@@ -1449,7 +1736,7 @@ Resources:
       IpProtocol: tcp
       FromPort: 3389
       ToPort: 3389
-      SourceSecurityGroupId: !Ref OpenVPNSecurityGroup
+      CidrIp: 10.0.0.0/16
 
   VDIInstance:
     Type: 'AWS::EC2::Instance'
@@ -1491,10 +1778,19 @@ Outputs:
     Description: 'Simple health endpoint for the web dashboard'
     Value: !Sub 'http://${WebServerInstance.PublicIp}/health.php'
   CivicNexusVpcId:
-    Description: 'VPC used by the secure CivicNexus stack'
-    Value: !Ref VPC
+    Description: 'Private VPC used by the secure CivicNexus stack and Lambda add-on'
+    Value: !Ref PrivateVPC
     Export:
       Name: !Sub '${GroupName}-CivicNexusVpcId'
+  PublicVpcId:
+    Description: 'Public VPC used for web, NAT and optional OpenVPN admin access'
+    Value: !Ref PublicVPC
+  PrivateVpcId:
+    Description: 'Private VPC used for MongoDB, VDI and Lambda ENIs'
+    Value: !Ref PrivateVPC
+  TransitGatewayId:
+    Description: 'Transit Gateway connecting the public and private VPCs'
+    Value: !Ref TransitGateway
   PrivateSubnet1Id:
     Description: 'First private subnet used by the secure stack'
     Value: !Ref PrivateSubnet1
@@ -1529,7 +1825,7 @@ Outputs:
     Description: 'Secure stack does not assign a public IP to MongoDB'
     Value: 'None'
   NatGatewayId:
-    Description: 'NAT Gateway used for private subnet outbound setup access'
+    Description: 'NAT Gateway used for private VPC outbound setup access through Transit Gateway'
     Value: !Ref NatGateway
   MongoBackupBucketName:
     Description: 'Encrypted S3 bucket used for MongoDB backup and restore evidence'
@@ -1539,9 +1835,9 @@ Outputs:
     Condition: CreateEvidenceServices
     Value: !Ref VpcFlowLogGroup
   VpcFlowLogId:
-    Description: 'VPC Flow Log resource used for accepted and rejected traffic evidence'
+    Description: 'VPC Flow Log resources used for accepted and rejected traffic evidence'
     Condition: CreateEvidenceServices
-    Value: !Ref VpcFlowLog
+    Value: !Join [', ', [!Ref VpcFlowLog, !Ref PrivateVpcFlowLog]]
   OpenVPNServerPublicIP:
     Description: 'Public IP address of the optional OpenVPN admin server'
     Condition: CreateOpenVPN

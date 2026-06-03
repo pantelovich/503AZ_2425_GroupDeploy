@@ -14,7 +14,7 @@ The VDI control goal is secure private provisioning, not public remote desktop a
 - encrypted root EBS volume
 - IMDSv2 required
 - VDI security group with outbound web/DNS setup access and VPC-only internal access
-- optional RDP from the OpenVPN security group only when OpenVPN is enabled
+- optional RDP from the OpenVPN/admin CIDR only when VPN evidence is enabled
 
 For live evidence against an existing secure stack, `cfstack-vdi-evidence.yml` can deploy the same private VDI pattern without updating or replacing the running web/MongoDB stack.
 
@@ -26,7 +26,7 @@ For live evidence against an existing secure stack, `cfstack-vdi-evidence.yml` c
 | Public IP | Empty / none |
 | Private IP | Assigned from private subnet |
 | Security group ingress | No `0.0.0.0/0` RDP |
-| RDP access path | TCP 3389 allowed only from OpenVPN SG when VPN is enabled |
+| RDP access path | TCP 3389 allowed only from the OpenVPN/admin CIDR when VPN evidence is enabled |
 | Metadata options | `HttpTokens=required` |
 | Root volume | EBS encryption enabled |
 | Subnet | Private subnet |
@@ -66,7 +66,7 @@ Captured result:
 Use simple wording:
 
 ```text
-The VDI asset was provisioned as a private Windows EC2 instance. It had no public IPv4 address and no public RDP exposure. Administrative RDP access was designed to come through the OpenVPN security group only when the VPN evidence path is enabled. The instance used IMDSv2 and an encrypted root volume.
+The VDI asset was provisioned as a private Windows EC2 instance in PrivateVPC. It had no public IPv4 address and no public RDP exposure. Administrative RDP access was designed to come through the OpenVPN/admin CIDR only when the VPN evidence path is enabled. The instance used IMDSv2 and an encrypted root volume.
 ```
 
 Do not claim successful Windows login unless a screenshot or command output proves it.

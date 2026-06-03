@@ -9,9 +9,9 @@ The project keeps the weak baseline and the improved secure version separate so 
 | File | Purpose |
 |---|---|
 | `cfstack.yml` | Original weak baseline stack. Keep this unchanged for comparison. |
-| `cfstack-secure.yml` | Improved stack used for agreed security controls. |
+| `cfstack-secure.yml` | Improved two-VPC stack with PublicVPC, PrivateVPC and Transit Gateway routing. |
 | `cfstack-402-serverless.yml` | Optional 402-style add-on using Cognito, API Gateway, Lambda and the existing MongoDB-backed web tier. |
-| `cfstack-vdi-evidence.yml` | VDI evidence add-on that creates a private Windows VDI in the existing secure VPC. |
+| `cfstack-vdi-evidence.yml` | VDI evidence add-on that creates a private Windows VDI in the exported secure private VPC. |
 | `frontend/` | Optional React/Amplify frontend for the 402-style add-on. |
 | `DBLoad.js` | Baseline MongoDB seed data script. |
 | `scripts/update_lab_credentials.sh` | Updates local AWS CLI and GitHub Actions secrets from the Learner Lab credentials block. |
@@ -36,15 +36,17 @@ The secure stack currently focuses on:
 - web health check with MongoDB reachability
 - public summary API that exposes only safe city data
 - application database credentials stored outside the public web root
-- MongoDB placed in a private subnet with no public IP
-- MongoDB `27017` restricted to the webserver security group
+- two-VPC design with PublicVPC `10.0.0.0/16` and PrivateVPC `192.168.0.0/16`
+- Transit Gateway routes between the public/admin side and the private resource side
+- MongoDB placed in PrivateVPC private subnets with no public IP
+- MongoDB `27017` restricted to trusted public/admin and private replica paths
 - MongoDB packages installed by CloudFormation, with bind IP, authentication and replica set configuration completed manually
 - explicit outbound security group rules for web, VPN, and MongoDB setup traffic
-- NAT Gateway for private subnet outbound setup access
+- NAT Gateway in PublicVPC for private outbound setup access through Transit Gateway
 - manual database user creation, seed data insertion and backup/restore evidence after the stack is deployed
 - MongoDB backup bucket encryption, versioning, public access blocking, and HTTPS-only bucket policy
 - optional MongoDB backup upload evidence support, where the lab allows the needed IAM/S3 setup
-- optional VPC Flow Logs support for accepted and rejected traffic evidence
+- optional VPC Flow Logs support for accepted and rejected traffic evidence across both VPCs
 - optional 402-style add-on with Amplify/Cognito, API Gateway JWT authorisation, Lambda and MongoDB-backed data
 - private VDI instance with no public RDP, IMDSv2, encrypted root volume, and optional RDP only through OpenVPN
 
@@ -114,7 +116,7 @@ For VDI evidence, the useful checks are:
 3. VDI security group does not allow public RDP
 4. IMDSv2 is required
 5. root EBS volume encryption is enabled
-6. RDP is allowed only from OpenVPN security group when VPN is enabled
+6. RDP is allowed only from OpenVPN/admin CIDR when VPN is enabled
 
 ## Lab Credit Check
 
@@ -126,6 +128,6 @@ scripts/list_lab_resources.sh
 
 Keep the current evidence stack only while testing or collecting evidence. Delete old duplicate coursework stacks when they are no longer needed.
 
-The secure stack creates a NAT Gateway so the private MongoDB instance can download packages during setup. NAT Gateway can use AWS lab credit quickly, so delete the secure stack after evidence is saved.
+The secure stack creates a Transit Gateway and NAT Gateway so PrivateVPC resources can reach outbound setup services without public IPs. These resources can use AWS lab credit quickly, so delete the secure stack after evidence is saved.
 
 If the optional MongoDB backup bucket is created, it is retained so backup evidence is not removed when the stack is deleted. Empty and delete that bucket manually after the evidence is no longer needed.

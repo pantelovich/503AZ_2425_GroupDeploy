@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'VDI evidence add-on for CivicNexus. Creates a private Windows VDI in the existing secure stack VPC.'
+Description: 'VDI evidence add-on for CivicNexus. Creates a private Windows VDI in the exported secure PrivateVPC.'
 
 Parameters:
   GroupName:
@@ -9,13 +9,13 @@ Parameters:
   KeyName:
     Type: 'AWS::EC2::KeyPair::KeyName'
     Description: Name of an existing EC2 KeyPair for emergency admin access.
-  AdminSecurityGroupId:
+  AdminAccessCidr:
     Type: String
-    Description: Optional admin/VPN security group allowed to reach RDP. Leave blank to allow no inbound RDP.
+    Description: Optional admin/VPN CIDR allowed to reach RDP. Leave blank to allow no inbound RDP.
     Default: ''
 
 Conditions:
-  AllowRdpFromAdminSecurityGroup: !Not [!Equals [!Ref AdminSecurityGroupId, '']]
+  AllowRdpFromAdminCidr: !Not [!Equals [!Ref AdminAccessCidr, '']]
 
 Resources:
   VDISecurityGroup:
@@ -36,24 +36,24 @@ Resources:
         - IpProtocol: udp
           FromPort: 53
           ToPort: 53
-          CidrIp: 10.0.0.2/32
+          CidrIp: 192.168.0.2/32
         - IpProtocol: -1
-          CidrIp: 10.0.0.0/16
+          CidrIp: 192.168.0.0/16
       Tags:
         - Key: Name
           Value: !Sub 'civicnexus-vdi-sg-${GroupName}'
         - Key: GroupName
           Value: !Ref GroupName
 
-  VDIRdpFromAdminSecurityGroup:
+  VDIRdpFromAdminCidr:
     Type: 'AWS::EC2::SecurityGroupIngress'
-    Condition: AllowRdpFromAdminSecurityGroup
+    Condition: AllowRdpFromAdminCidr
     Properties:
       GroupId: !Ref VDISecurityGroup
       IpProtocol: tcp
       FromPort: 3389
       ToPort: 3389
-      SourceSecurityGroupId: !Ref AdminSecurityGroupId
+      CidrIp: !Ref AdminAccessCidr
 
   VDIInstance:
     Type: 'AWS::EC2::Instance'

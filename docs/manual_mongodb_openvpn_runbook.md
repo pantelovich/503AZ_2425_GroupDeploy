@@ -4,7 +4,7 @@ This runbook is for the final-style stack where CloudFormation creates the AWS i
 
 CloudFormation is responsible for:
 
-- VPC, public/private subnets, NAT and route tables
+- PublicVPC, PrivateVPC, Transit Gateway, NAT and route tables
 - web EC2, MongoDB EC2 instances and optional OpenVPN EC2
 - security groups and NACLs
 - MongoDB/OpenVPN package installation
@@ -66,7 +66,7 @@ proto udp
 dev tun
 topology subnet
 server 10.8.0.0 255.255.255.0
-push "route 10.0.0.0 255.255.0.0"
+push "route 192.168.0.0 255.255.0.0"
 ca ca.crt
 cert server.crt
 key server.key
@@ -87,10 +87,10 @@ echo 'net.ipv4.ip_forward = 1' | sudo tee /etc/sysctl.d/99-civicnexus-vpn.conf
 sudo sysctl --system
 ```
 
-5. Add the NAT rule from the VPN network to the VPC:
+5. Add the NAT rule from the VPN network to the private VPC range:
 
 ```bash
-sudo iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -d 10.0.0.0/16 -j MASQUERADE
+sudo iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -d 192.168.0.0/16 -j MASQUERADE
 sudo iptables-save | sudo tee /etc/sysconfig/iptables
 sudo systemctl enable iptables
 sudo systemctl restart iptables
@@ -109,7 +109,7 @@ sudo systemctl status openvpn-server@server --no-pager -l
 8. Download the `.ovpn` profile to Windows and test:
 
 ```powershell
-Test-NetConnection 10.0.10.10 -Port 27017
+Test-NetConnection 192.168.10.10 -Port 27017
 ```
 
 Expected result after MongoDB is running: `TcpTestSucceeded: True`.
@@ -118,16 +118,16 @@ Expected result after MongoDB is running: `TcpTestSucceeded: True`.
 
 Run on each MongoDB node with the correct private IP.
 
-- mongo1: `10.0.10.10`
-- mongo2: `10.0.11.10`
-- mongo3: `10.0.12.10`
+- mongo1: `192.168.10.10`
+- mongo2: `192.168.11.10`
+- mongo3: `192.168.12.10`
 
 Create one strong replica key manually. The same key must be used on all three nodes. Do not screenshot or commit it.
 
 Example per node:
 
 ```bash
-PRIVATE_IP="10.0.10.10"
+PRIVATE_IP="192.168.10.10"
 read -s -p "Replica key: " REPLICA_KEY
 echo
 
@@ -162,7 +162,7 @@ Change `PRIVATE_IP` for mongo2 and mongo3 before running the same commands.
 Run on mongo1 only after all three MongoDB services are running.
 
 ```bash
-mongosh "mongodb://127.0.0.1:27017/admin" --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"10.0.10.10:27017",priority:2},{_id:1,host:"10.0.11.10:27017"},{_id:2,host:"10.0.12.10:27017"}]})'
+mongosh "mongodb://127.0.0.1:27017/admin" --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"192.168.10.10:27017",priority:2},{_id:1,host:"192.168.11.10:27017"},{_id:2,host:"192.168.12.10:27017"}]})'
 ```
 
 Check status:
@@ -174,9 +174,9 @@ mongosh "mongodb://127.0.0.1:27017/admin" --quiet --eval 'rs.status().members.fo
 Expected:
 
 ```text
-10.0.10.10:27017 PRIMARY 1
-10.0.11.10:27017 SECONDARY 1
-10.0.12.10:27017 SECONDARY 1
+192.168.10.10:27017 PRIMARY 1
+192.168.11.10:27017 SECONDARY 1
+192.168.12.10:27017 SECONDARY 1
 ```
 
 ## 6. Create Users
@@ -319,7 +319,7 @@ Run a local dump and restore check using the admin account. Do not show the pass
 ```bash
 read -s -p "Mongo admin password: " MONGO_PWD
 echo
-ADMIN_URI="mongodb://mongoAdmin:${MONGO_PWD}@10.0.10.10:27017,10.0.11.10:27017,10.0.12.10:27017/admin?authSource=admin&replicaSet=rs0"
+ADMIN_URI="mongodb://mongoAdmin:${MONGO_PWD}@192.168.10.10:27017,192.168.11.10:27017,192.168.12.10:27017/admin?authSource=admin&replicaSet=rs0"
 mongodump --uri "$ADMIN_URI" --db civicnexus --archive=/tmp/civicnexus-backup.archive
 mongorestore --uri "$ADMIN_URI" --archive=/tmp/civicnexus-backup.archive --nsFrom='civicnexus.*' --nsTo='civicnexus_restore_check.*' --drop
 mongosh "$ADMIN_URI" --quiet --eval 'const d=db.getSiblingDB("civicnexus_restore_check"); printjson({urban:d.urban_environment_data.countDocuments(), personnel:d.personnel_data.countDocuments(), logs:d.system_operational_logs.countDocuments()}); d.dropDatabase();'
@@ -335,5 +335,5 @@ Keep screenshots of:
 - `mongod` service running
 - `mongod.conf` showing bind IP, rs0, authorization and keyFile
 - `rs.status()` showing one PRIMARY and two SECONDARY nodes
-- OpenVPN connected and `Test-NetConnection 10.0.10.10 -Port 27017` succeeding
+- OpenVPN connected and `Test-NetConnection 192.168.10.10 -Port 27017` succeeding
 - backup/restore command output

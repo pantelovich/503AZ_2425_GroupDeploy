@@ -13,7 +13,7 @@ Last updated: 2026-06-03
 | Mike | MongoDB database | Database exposure, access control, replica set, backup and database evidence |
 | Mike | Manual database and VPN controls | MongoDB users/authentication, OpenVPN admin path, backup/restore and manual runbook evidence |
 | Shared | VDI asset | Private Windows VDI provisioning, no public RDP, IMDSv2, encrypted root volume, and VPN-only admin path evidence |
-| Both | Network and final testing | Security group links, integration checks, final evidence |
+| Both | Network and final testing | PublicVPC, PrivateVPC, Transit Gateway routing, security group links, integration checks, final evidence |
 
 ## Notes
 
@@ -66,9 +66,9 @@ MongoDB conversion rules:
 
 1. Read `cfstack-secure.yml` first.
 2. Reuse the existing MongoDB replica set:
-   - `10.0.10.10:27017`
-   - `10.0.11.10:27017`
-   - `10.0.12.10:27017`
+   - `192.168.10.10:27017`
+   - `192.168.11.10:27017`
+   - `192.168.12.10:27017`
    - replica set: `rs0`
    - database: `civicnexus`
 3. Do not make MongoDB public.
@@ -80,7 +80,7 @@ MongoDB conversion rules:
    - API reads or writes MongoDB
 7. Keep public safe data separate from restricted data.
 8. Do not expose personnel details or raw operational logs through a public route.
-9. Current implementation uses API Gateway with Cognito JWT, then Lambda inside the VPC, then a private PHP endpoint on the web EC2, then MongoDB.
+9. Current implementation uses API Gateway with Cognito JWT, then Lambda inside the PrivateVPC, then a private PHP endpoint on the web EC2 in PublicVPC through Transit Gateway, then MongoDB.
 10. This avoids fake Lambda MongoDB imports because PHP already has the Composer MongoDB driver.
 11. Do not leave fake imports like `require("mongodb")` in inline Lambda code unless the dependency is actually packaged.
 12. Push after each small working milestone so Pantelis can review.
@@ -93,8 +93,8 @@ If packaging the Lambda driver becomes too fragile, use this safer lab design:
 
 1. API Gateway has the Cognito JWT authorizer.
 2. Authenticated API Gateway route calls Lambda.
-3. Lambda is inside the VPC.
-4. Lambda calls a private PHP endpoint on the web EC2 over the VPC.
+3. Lambda is inside the PrivateVPC.
+4. Lambda calls a private PHP endpoint on the web EC2 through Transit Gateway.
 5. PHP talks to MongoDB using the existing Composer MongoDB driver.
 6. The public API result still comes from MongoDB, and DynamoDB is removed.
 
@@ -110,16 +110,17 @@ Integration update:
 
 Current secure target:
 
-1. Keep the web/app layer public.
-2. Keep MongoDB in a private subnet with no public IP.
-3. Use NAT only if the private instance needs outbound setup access.
-4. Use VPN/SSM for admin access where possible, not public SSH.
-5. Keep MongoDB open only to the web/app security group and replica members.
-6. Run MongoDB as a private replica set after manual configuration proves it works.
-7. Keep lab-heavy evidence services disabled by default because AWS Academy blocks some IAM role creation.
-8. Treat the 402/S3 frontend as an extra after the secure stack works.
-9. Keep the 402 serverless add-on separate from the main secure stack so it does not destabilise the core coursework environment.
-10. Keep OpenVPN optional, not always on.
+1. Keep the web/app layer in PublicVPC.
+2. Keep MongoDB and VDI in PrivateVPC private subnets with no public IP.
+3. Use Transit Gateway for PublicVPC to PrivateVPC routing.
+4. Use NAT in PublicVPC only if private instances need outbound setup access.
+5. Use VPN/SSM for admin access where possible, not public SSH.
+6. Keep MongoDB open only to trusted PublicVPC/admin traffic and replica members.
+7. Run MongoDB as a private replica set after manual configuration proves it works.
+8. Keep lab-heavy evidence services disabled by default because AWS Academy blocks some IAM role creation.
+9. Treat the 402/S3 frontend as an extra after the secure stack works.
+10. Keep the 402 serverless add-on separate from the main secure stack so it does not destabilise the core coursework environment.
+11. Keep OpenVPN optional, not always on.
 
 Current branch position:
 
@@ -161,7 +162,7 @@ The final team branch should keep Pantelis' web/API path in code and Mike's heav
 
 Pantelis code-backed controls:
 
-1. `cfstack-secure.yml` web EC2, web security group, Apache/PHP dashboard, `/health.php`, browser headers, public summary route and private internal 402 bridge.
+1. `cfstack-secure.yml` PublicVPC, PrivateVPC, Transit Gateway, web EC2, web security group, Apache/PHP dashboard, `/health.php`, browser headers, public summary route and private internal 402 bridge.
 2. `cfstack-402-serverless.yml` Cognito user pool, API Gateway HTTP API, JWT authorizer, Lambda VPC bridge and CORS setting.
 3. `frontend/` operator login and API client.
 
@@ -217,3 +218,4 @@ Evidence can be:
 | 2026-06-02 | Pantelis | Captured final Pantelis web/API evidence: web SG inbound, security headers, health check, public internal-endpoint block, API 401 without token, and valid Cognito GET/POST to MongoDB. |
 | 2026-06-03 | Pantelis | Added final team-submission split: Pantelis web/API code-backed controls and Mike manual MongoDB/OpenVPN controls. |
 | 2026-06-03 | Shared | Brought VDI into the final branch as an enabled private asset and added VDI evidence collection guidance. |
+| 2026-06-03 | Shared | Moved the secure template to a tutor-style PublicVPC plus PrivateVPC design connected with Transit Gateway. |
