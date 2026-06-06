@@ -13,7 +13,6 @@ on:
         options:
           - cfstack-secure.yml
           - cfstack-402-serverless.yml
-          - cfstack.yml
 
 jobs:
   validate:
@@ -24,7 +23,7 @@ jobs:
 
       - name: Validate YAML templates
         run: |
-          ruby -e 'require "yaml"; YAML.load_file("cfstack.yml"); YAML.load_file("cfstack-secure.yml"); YAML.load_file("cfstack-402-serverless.yml")'
+          ruby -e 'require "yaml"; YAML.load_file("cfstack-secure.yml"); YAML.load_file("cfstack-402-serverless.yml")'
 
       - name: Check shell script syntax
         run: |
@@ -81,18 +80,6 @@ jobs:
               MongoAppUsername=civicApp \
               MongoAppPassword=${{ secrets.MONGO_APP_PASSWORD }}
 
-      - name: Deploy Baseline CivicNexus Stack
-        if: inputs.template_file == 'cfstack.yml'
-        run: |
-          aws cloudformation deploy \
-            --stack-name ${{ secrets.GROUP_NAME }}-civicnexus-stack \
-            --template-file ${{ inputs.template_file }} \
-            --capabilities CAPABILITY_IAM \
-            --parameter-overrides \
-              GroupName=${{ secrets.GROUP_NAME }} \
-              GroupSize=${{ secrets.GROUP_SIZE }} \
-              KeyName=${{ secrets.KEY_NAME }}
-
       - name: Deploy 402 Serverless Add-on
         if: inputs.template_file == 'cfstack-402-serverless.yml'
         run: |
@@ -104,33 +91,6 @@ jobs:
               ProjectName=civicnexus402 \
               GroupName=${{ secrets.GROUP_NAME }} \
               AllowedOrigin="*"
-
-      - name: Install MongoDB Shell
-        if: inputs.template_file == 'cfstack.yml'
-        run: |
-          wget -qO- https://www.mongodb.org/static/pgp/server-7.0.asc | sudo tee /etc/apt/trusted.gpg.d/server-7.0.asc
-          echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
-          sudo apt-get update
-          sudo apt-get install -y mongodb-mongosh
-
-      - name: Get MongoDB Server Public IP
-        if: inputs.template_file == 'cfstack.yml'
-        id: getDBIp
-        run: |
-          DB_IP=$(aws cloudformation describe-stacks \
-            --stack-name ${{ secrets.GROUP_NAME }}-civicnexus-stack \
-            --query "Stacks[0].Outputs[?OutputKey=='MongoServerPublicIP'].OutputValue" \
-            --output text)
-          echo "DB_SERVER_IP=$DB_IP" >> $GITHUB_ENV
-          
-      - name: Load Data into MongoDB
-        if: inputs.template_file == 'cfstack.yml'
-        run: |
-          echo "Attempting to connect to the database at $DB_SERVER_IP and load data..."
-          # Note: The UserData script on the EC2 instance can take a minute to run.
-          # We add a sleep here to give it time to install and start MongoDB before we try to connect.
-          sleep 60 
-          mongosh "mongodb://${{ env.DB_SERVER_IP }}:27017" < DBLoad.js
 
       - name: Show stack outputs
         run: |

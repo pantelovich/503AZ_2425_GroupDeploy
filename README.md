@@ -8,10 +8,9 @@ The project keeps the weak baseline and the improved secure version separate so 
 
 | File | Purpose |
 |---|---|
-| `cfstack.yml` | Original weak baseline stack. Keep this unchanged for comparison. |
+| `cfstack.yml` | Original weak baseline stack kept only for comparison. Do not deploy it as final evidence. |
 | `cfstack-secure.yml` | Improved two-VPC stack with PublicVPC, PrivateVPC and Transit Gateway routing. |
 | `cfstack-402-serverless.yml` | Optional 402-style add-on using Cognito, API Gateway, Lambda and the existing MongoDB-backed web tier. |
-| `cfstack-vdi-evidence.yml` | VDI evidence add-on that creates a private Windows VDI in the exported secure private VPC. |
 | `frontend/` | Optional React/Amplify frontend for the 402-style add-on. |
 | `DBLoad.js` | Baseline MongoDB seed data script. |
 | `scripts/update_lab_credentials.sh` | Updates local AWS CLI and GitHub Actions secrets from the Learner Lab credentials block. |
@@ -19,10 +18,8 @@ The project keeps the weak baseline and the improved secure version separate so 
 | `scripts/collect_database_evidence.sh` | Collects MongoDB instance, security group, and access evidence. |
 | `scripts/collect_vdi_evidence.sh` | Collects VDI instance, security group, metadata, and volume encryption evidence. |
 | `scripts/collect_network_audit_evidence.sh` | Collects CloudFormation, CloudTrail, and VPC Flow Log evidence. |
-| `scripts/install_database_vpn_packages.sh` | Installs MongoDB/OpenVPN packages only; configuration is completed manually. |
 | `scripts/list_lab_resources.sh` | Lists active AWS lab resources so unused stacks can be deleted before they waste credit. |
 | `docs/team_asset_ownership.md` | Records who worked on which asset and what changed. |
-| `docs/manual_mongodb_openvpn_runbook.md` | Manual setup steps for MongoDB replica/auth and OpenVPN admin access. |
 
 ## Current Secure Direction
 
@@ -40,17 +37,17 @@ The secure stack currently focuses on:
 - Transit Gateway routes between the public/admin side and the private resource side
 - MongoDB placed in PrivateVPC private subnets with no public IP
 - MongoDB `27017` restricted to trusted public/admin and private replica paths
-- MongoDB packages installed by CloudFormation, with bind IP, authentication and replica set configuration completed manually
+- MongoDB packages installed by CloudFormation, with any final admin/VPN checks documented outside GitHub
 - explicit outbound security group rules for web, VPN, and MongoDB setup traffic
 - NAT Gateway in PublicVPC for private outbound setup access through Transit Gateway
-- manual database user creation, seed data insertion and backup/restore evidence after the stack is deployed
+- database user, seed data and backup/restore evidence recorded outside GitHub when manually collected
 - MongoDB backup bucket encryption, versioning, public access blocking, and HTTPS-only bucket policy
 - optional MongoDB backup upload evidence support, where the lab allows the needed IAM/S3 setup
 - optional VPC Flow Logs support for accepted and rejected traffic evidence across both VPCs
 - optional 402-style add-on with Amplify/Cognito, API Gateway JWT authorisation, Lambda and MongoDB-backed data
 - private VDI instance with no public RDP, IMDSv2, encrypted root volume, and optional RDP only through OpenVPN
 
-The latest Pantelis webserver evidence was collected on 2026-05-26 from stack `pantelis-week5-web-evidence`. The stack was deleted after evidence was saved to avoid wasting AWS Academy lab credit.
+The final live evidence was collected on 2026-06-06 from stack `pantelis-civicnexus-stack` and the 402 add-on stack `pantelis-402-serverless-addon`.
 
 ## Deploy
 
@@ -62,29 +59,13 @@ Use the manual workflow and select:
 cfstack-secure.yml
 ```
 
-The baseline template can still be selected when the weak environment is needed for comparison:
-
-```text
-cfstack.yml
-```
-
 The optional 402 add-on can also be selected after the secure stack is deployed:
 
 ```text
 cfstack-402-serverless.yml
 ```
 
-The VDI evidence add-on can be deployed after the secure stack is deployed:
-
-```text
-cfstack-vdi-evidence.yml
-```
-
-After the secure stack is created, complete the manual MongoDB/OpenVPN configuration before collecting database or VPN evidence:
-
-```text
-docs/manual_mongodb_openvpn_runbook.md
-```
+Manual MongoDB/OpenVPN connection notes, one-off commands, client profile details and local scripts are intentionally kept outside GitHub so secrets and private profile material are not committed.
 
 ## Evidence
 
