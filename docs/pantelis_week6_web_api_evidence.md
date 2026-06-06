@@ -27,14 +27,14 @@ Mike owns:
 Evidence folder:
 
 ```text
-/Users/pantelos/Library/CloudStorage/OneDrive-CoventryUniversity/Michalis Nicolaou's files - 503 Cloud Security/503AZ Shared Work/Evidence/Raw AWS Output/2026-06-02_final_pantelis_web_api
+/Users/pantelos/Library/CloudStorage/OneDrive-CoventryUniversity/Michalis Nicolaou's files - 503 Cloud Security/503AZ Shared Work/Evidence/Raw AWS Output/2026-06-06_final_tgw_live
 ```
 
 Captured checks:
 
 | Check | Expected result | Status |
 |---|---|---|
-| Network layout | PublicVPC `10.0.0.0/16`, PrivateVPC `192.168.0.0/16`, Transit Gateway routes | Needs fresh evidence after redeploy |
+| Network layout | PublicVPC `10.0.0.0/16`, PrivateVPC `192.168.0.0/16`, Transit Gateway routes | Captured |
 | Web security group inbound | Public TCP 80 only, no public SSH | Captured |
 | `curl -I /` | Browser/security headers present | Captured |
 | `/health.php` | `status: ok`, `database: reachable` | Captured |
@@ -44,30 +44,24 @@ Captured checks:
 | API Gateway `POST /items` with valid Cognito token | `201`, MongoDB write succeeds | Captured |
 | `frontend/.env.local` | ignored by Git, not tracked | Captured |
 
-## Rerun After Mike's Submitted Branch
+## Final Refresh Notes
 
-When Mike's submitted branch is available locally:
+The 2026-06-06 evidence folder is the final live evidence set. Older dated evidence folders have been archived because they predate the stable web Elastic IP, final Transit Gateway outputs, or final 402 API path.
 
-1. Fetch and switch to the submitted branch.
-2. Confirm `cfstack-secure.yml` still exports the web private IP, web security group, PrivateVPC ID and private subnet IDs used by `cfstack-402-serverless.yml`.
-3. Deploy or reuse the secure stack.
-4. Deploy the 402 serverless add-on.
-5. Rerun the checks above.
-6. Save fresh outputs in a dated evidence folder.
-7. Do not claim OpenVPN, backup/restore, replica set, HTTPS or WAF unless Mike has evidence for them.
+Do not claim OpenVPN client login, backup/restore, full three-node replica administration, HTTPS or WAF unless there is separate evidence for them.
 
 ## Final Report Wording
 
 Use this architecture story:
 
 ```text
-Cognito login -> API Gateway JWT authorizer -> Lambda in VPC -> private PHP endpoint -> MongoDB
+Cognito login -> API Gateway JWT authorizer -> Lambda VPC ENIs in PublicVPC transit subnets -> private PHP endpoint -> MongoDB
 ```
 
 For the advanced network design, write it as:
 
 ```text
-Cognito login -> API Gateway JWT authorizer -> Lambda in PrivateVPC -> Transit Gateway -> private PHP endpoint on PublicVPC web EC2 -> Transit Gateway -> MongoDB in PrivateVPC
+Cognito login -> API Gateway JWT authorizer -> Lambda VPC ENIs in PublicVPC transit subnets -> private PHP endpoint on PublicVPC web EC2 -> Transit Gateway -> MongoDB in PrivateVPC
 ```
 
 Do not mention DynamoDB as the final database.

@@ -270,6 +270,7 @@ Resources:
       SubnetIds:
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
       Tags:
         - Key: Name
           Value: !Sub 'civicnexus-private-vpc-tgw-attachment-${GroupName}'
@@ -994,6 +995,15 @@ Resources:
       ToPort: 22
       CidrIp: 10.0.0.0/16
 
+  MongoSSHFromReplicaMembers:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref MongoSecurityGroup
+      IpProtocol: tcp
+      FromPort: 22
+      ToPort: 22
+      SourceSecurityGroupId: !Ref MongoSecurityGroup
+
   MongoIngressFromReplicaMembers:
     Type: 'AWS::EC2::SecurityGroupIngress'
     Properties:
@@ -1698,6 +1708,23 @@ Resources:
         - Key: GroupName
           Value: !Ref GroupName
 
+  WebServerElasticIP:
+    Type: AWS::EC2::EIP
+    DependsOn: AttachGateway
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub 'civicnexus-web-eip-${GroupName}'
+        - Key: GroupName
+          Value: !Ref GroupName
+
+  WebServerElasticIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt WebServerElasticIP.AllocationId
+      InstanceId: !Ref WebServerInstance
+
   # ------------------------------------------------------------#
   # Asset 3: Private VDI Instance
   # ------------------------------------------------------------#
@@ -1768,7 +1795,7 @@ Resources:
 Outputs:
   WebServerPublicIP:
     Description: 'Public IP address of the Web Server'
-    Value: !GetAtt WebServerInstance.PublicIp
+    Value: !Ref WebServerElasticIP
   WebServerPrivateIP:
     Description: 'Private IP address used by internal API calls to the web server'
     Value: !GetAtt WebServerInstance.PrivateIp
@@ -1776,21 +1803,33 @@ Outputs:
       Name: !Sub '${GroupName}-CivicNexusWebPrivateIp'
   WebServerHealthURL:
     Description: 'Simple health endpoint for the web dashboard'
-    Value: !Sub 'http://${WebServerInstance.PublicIp}/health.php'
+    Value: !Sub 'http://${WebServerElasticIP}/health.php'
   CivicNexusVpcId:
-    Description: 'Private VPC used by the secure CivicNexus stack and Lambda add-on'
+    Description: 'Private VPC used by MongoDB, VDI and private routing'
     Value: !Ref PrivateVPC
     Export:
       Name: !Sub '${GroupName}-CivicNexusVpcId'
   PublicVpcId:
     Description: 'Public VPC used for web, NAT and optional OpenVPN admin access'
     Value: !Ref PublicVPC
+    Export:
+      Name: !Sub '${GroupName}-CivicNexusPublicVpcId'
   PrivateVpcId:
-    Description: 'Private VPC used for MongoDB, VDI and Lambda ENIs'
+    Description: 'Private VPC used for MongoDB and VDI'
     Value: !Ref PrivateVPC
   TransitGatewayId:
     Description: 'Transit Gateway connecting the public and private VPCs'
     Value: !Ref TransitGateway
+  PublicTransitSubnet1Id:
+    Description: 'First public transit subnet used for TGW and serverless VPC ENIs'
+    Value: !Ref PublicTransitSubnet1
+    Export:
+      Name: !Sub '${GroupName}-CivicNexusPublicTransitSubnet1Id'
+  PublicTransitSubnet2Id:
+    Description: 'Second public transit subnet used for TGW and serverless VPC ENIs'
+    Value: !Ref PublicTransitSubnet2
+    Export:
+      Name: !Sub '${GroupName}-CivicNexusPublicTransitSubnet2Id'
   PrivateSubnet1Id:
     Description: 'First private subnet used by the secure stack'
     Value: !Ref PrivateSubnet1

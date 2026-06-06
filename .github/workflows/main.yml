@@ -75,11 +75,11 @@ jobs:
               GroupName=${{ secrets.GROUP_NAME }} \
               GroupSize=${{ secrets.GROUP_SIZE }} \
               KeyName=${{ secrets.KEY_NAME }} \
+              EnableVDI=true \
               EnableEvidenceServices=false \
               EnableOpenVPN=false \
-              MongoAdminPassword=${{ secrets.MONGO_ADMIN_PASSWORD }} \
-              MongoAppPassword=${{ secrets.MONGO_APP_PASSWORD }} \
-              MongoReplicaKey=${{ secrets.MONGO_REPLICA_KEY }}
+              MongoAppUsername=civicApp \
+              MongoAppPassword=${{ secrets.MONGO_APP_PASSWORD }}
 
       - name: Deploy Baseline CivicNexus Stack
         if: inputs.template_file == 'cfstack.yml'

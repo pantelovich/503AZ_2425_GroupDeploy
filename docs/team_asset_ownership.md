@@ -80,7 +80,7 @@ MongoDB conversion rules:
    - API reads or writes MongoDB
 7. Keep public safe data separate from restricted data.
 8. Do not expose personnel details or raw operational logs through a public route.
-9. Current implementation uses API Gateway with Cognito JWT, then Lambda inside the PrivateVPC, then a private PHP endpoint on the web EC2 in PublicVPC through Transit Gateway, then MongoDB.
+9. Current implementation uses API Gateway with Cognito JWT, then Lambda VPC ENIs in PublicVPC transit subnets, then a private PHP endpoint on the web EC2, then MongoDB through Transit Gateway.
 10. This avoids fake Lambda MongoDB imports because PHP already has the Composer MongoDB driver.
 11. Do not leave fake imports like `require("mongodb")` in inline Lambda code unless the dependency is actually packaged.
 12. Push after each small working milestone so Pantelis can review.
@@ -93,9 +93,9 @@ If packaging the Lambda driver becomes too fragile, use this safer lab design:
 
 1. API Gateway has the Cognito JWT authorizer.
 2. Authenticated API Gateway route calls Lambda.
-3. Lambda is inside the PrivateVPC.
-4. Lambda calls a private PHP endpoint on the web EC2 through Transit Gateway.
-5. PHP talks to MongoDB using the existing Composer MongoDB driver.
+3. Lambda uses VPC ENIs in the PublicVPC transit subnets.
+4. Lambda calls a private PHP endpoint on the web EC2.
+5. PHP talks to MongoDB through Transit Gateway using the existing Composer MongoDB driver.
 6. The public API result still comes from MongoDB, and DynamoDB is removed.
 
 Integration update:
