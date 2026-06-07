@@ -13,8 +13,8 @@ Parameters:
     Default: civicnexus
   AllowedOrigin:
     Type: String
-    Description: Browser origin allowed to call the API. Use * for lab testing only.
-    Default: '*'
+    Description: Browser origin allowed to call the API. Set this to the local Vite URL or deployed frontend URL.
+    Default: 'http://localhost:5173'
 
 Resources:
   CivicNexusUserPool:
@@ -87,7 +87,7 @@ Resources:
               - '/internal/402-mongo.php'
       Code:
         ZipFile: |
-          const allowedOrigin = process.env.ALLOWED_ORIGIN || "*";
+          const allowedOrigin = process.env.ALLOWED_ORIGIN || "http://localhost:5173";
           const backendUrl = process.env.BACKEND_URL;
 
           const headers = {

@@ -41,13 +41,14 @@ SECURITY_GROUP_IDS="$(aws ec2 describe-instances \
   --instance-ids "$VDI_INSTANCE_ID" \
   --query 'Reservations[0].Instances[0].SecurityGroups[].GroupId' \
   --output text)"
+read -r -a SECURITY_GROUP_ID_ARGS <<< "$SECURITY_GROUP_IDS"
 
 aws ec2 describe-security-groups \
-  --group-ids $SECURITY_GROUP_IDS \
+  --group-ids "${SECURITY_GROUP_ID_ARGS[@]}" \
   --output json > "$OUT_DIR/04_vdi_security_groups.json"
 
 aws ec2 describe-security-groups \
-  --group-ids $SECURITY_GROUP_IDS \
+  --group-ids "${SECURITY_GROUP_ID_ARGS[@]}" \
   --query 'SecurityGroups[].{GroupId:GroupId,GroupName:GroupName,Ingress:IpPermissions,Egress:IpPermissionsEgress}' \
   --output table > "$OUT_DIR/05_vdi_security_groups_summary.txt"
 
@@ -55,13 +56,14 @@ VOLUME_IDS="$(aws ec2 describe-instances \
   --instance-ids "$VDI_INSTANCE_ID" \
   --query 'Reservations[0].Instances[0].BlockDeviceMappings[].Ebs.VolumeId' \
   --output text)"
+read -r -a VOLUME_ID_ARGS <<< "$VOLUME_IDS"
 
 aws ec2 describe-volumes \
-  --volume-ids $VOLUME_IDS \
+  --volume-ids "${VOLUME_ID_ARGS[@]}" \
   --output json > "$OUT_DIR/06_vdi_volumes.json"
 
 aws ec2 describe-volumes \
-  --volume-ids $VOLUME_IDS \
+  --volume-ids "${VOLUME_ID_ARGS[@]}" \
   --query 'Volumes[].{VolumeId:VolumeId,Encrypted:Encrypted,VolumeType:VolumeType,Size:Size,State:State}' \
   --output table > "$OUT_DIR/07_vdi_volume_encryption_summary.txt"
 

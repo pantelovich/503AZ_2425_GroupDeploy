@@ -13,6 +13,26 @@ on:
         options:
           - cfstack-secure.yml
           - cfstack-402-serverless.yml
+      enable_vdi:
+        description: Deploy the private VDI instance with the secure stack
+        required: true
+        default: true
+        type: boolean
+      enable_openvpn:
+        description: Deploy the OpenVPN/admin instance with the secure stack
+        required: true
+        default: true
+        type: boolean
+      enable_evidence_services:
+        description: Deploy optional VPC Flow Logs and backup IAM profile
+        required: true
+        default: false
+        type: boolean
+      allowed_origin:
+        description: Browser origin allowed to call the 402 API
+        required: true
+        default: http://localhost:5173
+        type: string
 
 jobs:
   validate:
@@ -74,9 +94,9 @@ jobs:
               GroupName=${{ secrets.GROUP_NAME }} \
               GroupSize=${{ secrets.GROUP_SIZE }} \
               KeyName=${{ secrets.KEY_NAME }} \
-              EnableVDI=true \
-              EnableEvidenceServices=false \
-              EnableOpenVPN=false \
+              EnableVDI=${{ inputs.enable_vdi }} \
+              EnableEvidenceServices=${{ inputs.enable_evidence_services }} \
+              EnableOpenVPN=${{ inputs.enable_openvpn }} \
               MongoAppUsername=civicApp \
               MongoAppPassword=${{ secrets.MONGO_APP_PASSWORD }}
 
@@ -90,7 +110,7 @@ jobs:
             --parameter-overrides \
               ProjectName=civicnexus402 \
               GroupName=${{ secrets.GROUP_NAME }} \
-              AllowedOrigin="*"
+              AllowedOrigin="${{ inputs.allowed_origin }}"
 
       - name: Show stack outputs
         run: |

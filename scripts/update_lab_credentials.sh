@@ -53,15 +53,17 @@ if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
   gh secret set AWS_SESSION_TOKEN --repo "$REPO" --body "$SESSION_TOKEN"
   gh secret set AWS_REGION --repo "$REPO" --body "$REGION"
 
-  MONGO_ADMIN_PASSWORD_VALUE="${MONGO_ADMIN_PASSWORD_VALUE:-$(random_secret)}"
+  GROUP_NAME_VALUE="${GROUP_NAME_VALUE:-pantelis}"
+  GROUP_SIZE_VALUE="${GROUP_SIZE_VALUE:-2}"
+  KEY_NAME_VALUE="${KEY_NAME_VALUE:-labsuser}"
   MONGO_APP_PASSWORD_VALUE="${MONGO_APP_PASSWORD_VALUE:-$(random_secret)}"
-  MONGO_REPLICA_KEY_VALUE="${MONGO_REPLICA_KEY_VALUE:-$(random_secret)}"
 
-  gh secret set MONGO_ADMIN_PASSWORD --repo "$REPO" --body "$MONGO_ADMIN_PASSWORD_VALUE"
+  gh secret set GROUP_NAME --repo "$REPO" --body "$GROUP_NAME_VALUE"
+  gh secret set GROUP_SIZE --repo "$REPO" --body "$GROUP_SIZE_VALUE"
+  gh secret set KEY_NAME --repo "$REPO" --body "$KEY_NAME_VALUE"
   gh secret set MONGO_APP_PASSWORD --repo "$REPO" --body "$MONGO_APP_PASSWORD_VALUE"
-  gh secret set MONGO_REPLICA_KEY --repo "$REPO" --body "$MONGO_REPLICA_KEY_VALUE"
 
-  echo "GitHub Actions AWS and MongoDB deploy secrets updated for $REPO"
+  echo "GitHub Actions AWS, group, key pair, and MongoDB app secrets updated for $REPO"
 else
   echo "GitHub CLI is not authenticated, so repo secrets were not updated."
   echo "Run: gh auth login -h github.com"

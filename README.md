@@ -42,12 +42,12 @@ The secure stack currently focuses on:
 - NAT Gateway in PublicVPC for private outbound setup access through Transit Gateway
 - database user, seed data and backup/restore evidence recorded outside GitHub when manually collected
 - MongoDB backup bucket encryption, versioning, public access blocking, and HTTPS-only bucket policy
-- optional MongoDB backup upload evidence support, where the lab allows the needed IAM/S3 setup
+- MongoDB backup bucket controls, with optional backup upload evidence support where the lab allows the needed IAM/S3 setup
 - optional VPC Flow Logs support for accepted and rejected traffic evidence across both VPCs
 - optional 402-style add-on with Amplify/Cognito, API Gateway JWT authorisation, Lambda and MongoDB-backed data
 - private VDI instance with no public RDP, IMDSv2, encrypted root volume, and optional RDP only through OpenVPN
 
-The final live evidence was collected on 2026-06-06 from stack `pantelis-civicnexus-stack` and the 402 add-on stack `pantelis-402-serverless-addon`.
+The final live evidence snapshot was collected before teardown from stack `pantelis-civicnexus-stack` and the 402 add-on stack `pantelis-402-serverless-addon`. The AWS lab resources were then deleted to save credit, so saved evidence should be used unless the stack is redeployed.
 
 ## Deploy
 
@@ -59,11 +59,13 @@ Use the manual workflow and select:
 cfstack-secure.yml
 ```
 
-The optional 402 add-on can also be selected after the secure stack is deployed:
+The optional 402 add-on can be selected after the secure stack is deployed. Deploy order matters because the 402 template imports VPC, subnet and web private IP outputs from the secure stack:
 
 ```text
 cfstack-402-serverless.yml
 ```
+
+For the 402 add-on, set `allowed_origin` to the frontend origin you will use. Use `http://localhost:5173` for the local Vite frontend, or the S3/static website URL if the frontend is hosted.
 
 Manual MongoDB/OpenVPN connection notes, one-off commands, client profile details and local scripts are intentionally kept outside GitHub so secrets and private profile material are not committed.
 
@@ -111,4 +113,6 @@ Keep the current evidence stack only while testing or collecting evidence. Delet
 
 The secure stack creates a Transit Gateway and NAT Gateway so PrivateVPC resources can reach outbound setup services without public IPs. These resources can use AWS lab credit quickly, so delete the secure stack after evidence is saved.
 
-If the optional MongoDB backup bucket is created, it is retained so backup evidence is not removed when the stack is deleted. Empty and delete that bucket manually after the evidence is no longer needed.
+The MongoDB backup bucket is retained so backup evidence is not removed when the stack is deleted. Empty and delete that bucket manually after the evidence is no longer needed.
+
+When tearing the lab down, delete the 402 add-on stack before deleting the secure stack. The add-on imports outputs from the secure stack, so CloudFormation can block secure-stack deletion while the add-on still exists.

@@ -1,6 +1,6 @@
 # Team Asset Ownership
 
-Last updated: 2026-06-06
+Last updated: 2026-06-08
 
 ## Final Branch
 
@@ -29,7 +29,9 @@ This branch keeps deployable code and clean project docs only. Manual MongoDB/Op
 Cognito login -> API Gateway JWT authorizer -> Lambda VPC ENIs in PublicVPC transit subnets -> private PHP endpoint on web EC2 -> MongoDB through Transit Gateway
 ```
 
-## Current Live Stack Values
+## Final Evidence Snapshot Values
+
+These values are from the final evidence capture before the AWS lab resources were deleted to save credit. They prove what was deployed at the time of evidence collection. If the stack is redeployed, new public IPs, API IDs and generated resource IDs may be different.
 
 | Output | Value |
 |---|---|
@@ -39,7 +41,7 @@ Cognito login -> API Gateway JWT authorizer -> Lambda VPC ENIs in PublicVPC tran
 | PublicVPC | `10.0.0.0/16` |
 | PrivateVPC | `192.168.0.0/16` |
 | Transit Gateway | `tgw-09c8644e65d2ebb00` |
-| 402 API | `https://poa5mm0rs1.execute-api.us-east-1.amazonaws.com/items` |
+| 402 API before teardown | `https://poa5mm0rs1.execute-api.us-east-1.amazonaws.com/items` |
 
 ## Evidence Rules
 
@@ -54,4 +56,4 @@ Do not claim these as final unless fresh evidence exists:
 5. HTTPS/TLS is complete
 6. WAF is deployed
 
-Old MongoDB screenshots using `10.0.10.10`, `10.0.11.10` or `10.0.12.10` are historical only. The current final stack uses `192.168.10.10`, `192.168.11.10` and `192.168.12.10`.
+Old MongoDB screenshots using `10.0.10.10`, `10.0.11.10` or `10.0.12.10` are historical only. The final evidence snapshot uses `192.168.10.10`, `192.168.11.10` and `192.168.12.10`.
