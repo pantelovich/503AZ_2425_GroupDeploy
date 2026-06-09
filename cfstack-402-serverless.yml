@@ -1,6 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: '402-style CivicNexus add-on using Cognito, API Gateway, Lambda and the existing private MongoDB-backed web tier.'
 
+# Owner: Pantelis
+# Scope: Cognito login, API Gateway JWT authorizer, Lambda VPC bridge and frontend/API evidence.
+
 Parameters:
   ProjectName:
     Type: String

@@ -1726,7 +1726,7 @@ Resources:
       InstanceId: !Ref WebServerInstance
 
   # ------------------------------------------------------------#
-  # Asset 3: Private VDI Instance
+  # Asset 3: Private VDI Instance (Shared)
   # ------------------------------------------------------------#
   VDISecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'

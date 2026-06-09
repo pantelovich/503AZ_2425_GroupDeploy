@@ -21,6 +21,14 @@ The project keeps the weak baseline and the improved secure version separate so 
 | `scripts/list_lab_resources.sh` | Lists active AWS lab resources so unused stacks can be deleted before they waste credit. |
 | `docs/team_asset_ownership.md` | Records who worked on which asset and what changed. |
 
+## Ownership Summary
+
+| Person | Main responsibility |
+|---|---|
+| Pantelis | Public webserver, PHP dashboard, web evidence, network integration, 402 Cognito/API/frontend path |
+| Mike | MongoDB controls, OpenVPN/admin path, database access checks and manual database evidence |
+| Shared | Private VDI evidence and final team explanation |
+
 ## Current Secure Direction
 
 The secure stack currently focuses on:
